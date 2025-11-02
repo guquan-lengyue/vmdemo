@@ -27,11 +27,11 @@
       </button>
       <button @click="disconnectVNC" :disabled="!isConnected">断开连接</button>
     </div>
-
     <!-- 3. 连接状态提示 -->
     <div class="vnc-status" :class="statusClass">
       {{ statusText }}
     </div>
+    <!--    -->
   </div>
 </template>
 

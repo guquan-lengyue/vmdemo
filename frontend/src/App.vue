@@ -1,7 +1,6 @@
 
 <template>
   <div>
-    "hello world"
      <NoVncViewer />
   </div>
 </template>
