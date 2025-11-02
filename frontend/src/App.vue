@@ -2,7 +2,7 @@
 <template>
   <div>
     "hello world"
-    <!-- <NoVncViewer /> -->
+     <NoVncViewer />
   </div>
 </template>
 

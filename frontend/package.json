@@ -26,6 +26,7 @@
     "globals": "^16.4.0",
     "prettier": "3.6.2",
     "vite": "^7.1.11",
+    "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-vue-devtools": "^8.0.3"
   }
 }
