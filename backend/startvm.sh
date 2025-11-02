@@ -1,0 +1,12 @@
+sudo virt-install \
+ --name ubuntu2510 \
+ --memory 4096 \
+ --vcpus 2 \
+ --disk path=/home/k/workspace/vmdemo/disk.qcow2,format=qcow2,size=50 \
+ --os-variant ubuntu25.10 \
+ --cdrom /home/k/下载/ubuntu-25.10-desktop-amd64.iso \
+ --graphics vnc,port=5900 \
+ --boot uefi \
+ --virt-type kvm \
+ --network default \
+ --noautoconsole 
