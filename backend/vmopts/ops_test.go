@@ -1,6 +1,9 @@
 package vmopts
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // 测试获取所有虚拟机列表
 func TestGetVMList_All(t *testing.T) {
@@ -67,5 +70,30 @@ func TestForceShutdownVM(t *testing.T) {
 	err := ForceShutdownVM(vmName)
 	if err != nil {
 		t.Errorf("ForceShutdownVM(%s) failed: %v", vmName, err)
+	}
+}
+
+// DeleteVM 测试
+func TestDeleteVM(t *testing.T) {
+	vmName := "ubuntu2510"
+	err := DeleteVM(vmName)
+	if err != nil {
+		t.Errorf("DeleteVM(%s) failed: %v", vmName, err)
+	}
+}
+
+// TestCreateVMFromXML 测试创建虚拟机
+func TestCreateVMFromXML(t *testing.T) {
+	vmName := "ubuntu2510"
+	// 读取ubuntu2510.xml文件内容
+	xmlContent, err := os.ReadFile("../ubuntu2510.xml")
+	if err != nil {
+		t.Errorf("ReadFile(ubuntu2510.xml) failed: %v", err)
+		return
+	}
+	xmlConfig := string(xmlContent)
+	err = CreateVMFromXML(vmName, xmlConfig)
+	if err != nil {
+		t.Errorf("CreateVMFromXML(%s) failed: %v", vmName, err)
 	}
 }

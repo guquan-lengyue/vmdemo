@@ -3,7 +3,10 @@ package vmopts
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
+	"log"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -18,16 +21,16 @@ type VMInfo struct {
 // ExecVirshCommand 执行 virsh 命令并返回输出结果
 func ExecVirshCommand(args ...string) (string, error) {
 	cmd := exec.Command("virsh", args...)
-	var out bytes.Buffer
-	var err bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &err
+	var stdOut bytes.Buffer
+	var stdErr bytes.Buffer
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("执行 virsh 命令失败: %v, %s", err, err.Error())
+		// 读取标准错误输出
+		return "", fmt.Errorf("执行 virsh 命令失败: %v, %s", err, stdErr.String())
 	}
-
-	return out.String(), nil
+	return stdOut.String(), nil
 }
 
 // GetVMList 读取虚拟机列表
@@ -58,6 +61,55 @@ func GetVMList(listType ListType) ([]VMInfo, error) {
 
 	// 解析文本输出
 	return parseTextVMList(output)
+}
+
+type Disk struct {
+	Type   string `xml:"type,attr"`
+	Device string `xml:"device,attr"`
+	Source struct {
+		File string `xml:"file,attr"`
+		Size string `xml:"size,attr"`
+	} `xml:"source"`
+	Driver struct {
+		Name    string `xml:"name,attr"`
+		Type    string `xml:"type,attr"`
+		Discard string `xml:"discard,attr"`
+	} `xml:"driver"`
+}
+
+type Domain struct {
+	Disks []Disk `xml:"devices>disk"`
+}
+
+// extractDisk 解析xml内容 读取xpath=//disk@type='file' 且//disk@device='disk' 下的source/@file属性值
+func extractDisk(xmlConfig string) []Disk {
+	var domain Domain
+	err := xml.Unmarshal([]byte(xmlConfig), &domain)
+	if err != nil {
+		return nil
+	}
+	var diskPaths []Disk
+	for _, disk := range domain.Disks {
+		if disk.Type == "file" && disk.Device == "disk" && disk.Source.File != "" {
+			diskPaths = append(diskPaths, disk)
+		}
+	}
+	return diskPaths
+}
+
+// CreateDiskFile 使用qemu-img命令创建磁盘文件
+func CreateDiskFile(diskPath, format, size string) (string, error) {
+	log.Printf("正在分配磁盘文件: %s, 格式: %s", diskPath, format)
+	cmd := exec.Command("qemu-img", "create", "-f", format, diskPath, size)
+	var stdOut bytes.Buffer
+	var stdErr bytes.Buffer
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+	if err := cmd.Run(); err != nil {
+		// 读取标准错误输出
+		return "", fmt.Errorf("执行 qemu-img 命令失败: %v, %s", err, stdErr.String())
+	}
+	return stdOut.String(), nil
 }
 
 // parseTextVMList 解析 virsh list 命令的文本输出
@@ -125,5 +177,32 @@ func GetVMInfo(vmName string) (string, error) {
 // ForceShutdownVM 强制关闭指定的虚拟机
 func ForceShutdownVM(vmName string) error {
 	_, err := ExecVirshCommand("destroy", vmName)
+	return err
+}
+
+// DeleteVM 删除指定的虚拟机
+func DeleteVM(vmName string) error {
+	_, err := ExecVirshCommand("undefine", vmName, "--nvram", "--remove-all-storage")
+	return err
+}
+
+// CreateVMFromXML 通过xml创建虚拟机
+func CreateVMFromXML(vmName, xmlConfig string) error {
+	// 将xml文本写入到临时文件中,
+	xmlPath := "/tmp/" + vmName + ".xml"
+	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)
+	defer os.Remove(xmlPath) // 创建完成后删除临时文件
+	// 判断xml内定义的磁盘是否存在
+	diskPaths := extractDisk(xmlConfig)
+	for _, diskPath := range diskPaths {
+		if _, err := os.Stat(diskPath.Source.File); os.IsNotExist(err) {
+			// 创建磁盘文件
+			_, err := CreateDiskFile(diskPath.Source.File, diskPath.Driver.Type, diskPath.Source.Size)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	_, err = ExecVirshCommand("create", "--file", xmlPath)
 	return err
 }
