@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	DefaultDiskPoolPath = "./disks"
+	DefaultDiskPoolPath = "./disks_pool"
 )
 
 func main() {

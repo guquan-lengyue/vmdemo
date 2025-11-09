@@ -1,5 +1,5 @@
-// Package vmopts virsh 命令调用工具
-package vmopts
+// Package kvm virsh 命令调用工具
+package kvm
 
 import (
 	"bytes"

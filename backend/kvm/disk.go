@@ -1,6 +1,7 @@
-package vmopts
+package kvm
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,9 +11,9 @@ import (
 
 // DiskInfo 表示虚拟盘的信息
 type DiskInfo struct {
-	Format string
-	Size   string
-	Path   string
+	Format string `json:"format"`
+	Size   string `json:"size"`
+	Name   string `json:"name"`
 }
 
 // CreateDisk 创建虚拟盘
@@ -32,20 +33,28 @@ func GetDiskInfo(path string) (*DiskInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get disk info: %s, error: %s", string(output), err)
 	}
-
-	// 解析 JSON 输出（简化处理）
-	info := &DiskInfo{}
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "\"format\"") {
-			info.Format = strings.TrimSpace(strings.Split(line, ":")[1])
-		} else if strings.Contains(line, "\"virtual-size\"") {
-			info.Size = strings.TrimSpace(strings.Split(line, ":")[1])
-		} else if strings.Contains(line, "\"filename\"") {
-			info.Path = strings.Trim(strings.Split(line, ":")[1], "\" ")
-		}
+	type diskInfo struct {
+		Format string `json:"format"`
+		Size   int64  `json:"virtual-size"`
+		Path   string `json:"filename"`
 	}
-	return info, nil
+	// 解析 JSON 输出（简化处理）
+	info := &diskInfo{}
+	err = json.Unmarshal(output, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse disk info: %s, error: %s", string(output), err)
+	}
+	// 只保留文件名
+	info.Path = filepath.Base(info.Path)
+	// 将size转为GB,保留两位小数
+	size := float32(info.Size) / 1024 / 1024 / 1024
+	// 转换为 DiskInfo 类型
+	rst := &DiskInfo{
+		Format: info.Format,
+		Size:   fmt.Sprintf("%.2fGB", size),
+		Name:   info.Path,
+	}
+	return rst, nil
 }
 
 // ResizeDisk 调整虚拟盘大小
@@ -86,16 +95,20 @@ func NewDiskPool(poolPath string) (*DiskPool, error) {
 }
 
 // ListDisks 列出硬盘池中的所有虚拟硬盘
-func (dp *DiskPool) ListDisks() ([]string, error) {
+func (dp *DiskPool) ListDisks() ([]DiskInfo, error) {
 	files, err := os.ReadDir(dp.PoolPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list disks in pool: %s", err)
 	}
 
-	var disks []string
+	var disks []DiskInfo
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".qcow2") {
-			disks = append(disks, file.Name())
+			info, err := GetDiskInfo(filepath.Join(dp.PoolPath, file.Name()))
+			if err != nil {
+				return nil, fmt.Errorf("failed to get disk info: %s", err)
+			}
+			disks = append(disks, *info)
 		}
 	}
 	return disks, nil

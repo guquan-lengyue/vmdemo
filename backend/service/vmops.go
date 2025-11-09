@@ -2,7 +2,7 @@ package service
 
 import (
 	"net/http"
-	"vmdemo/vmopts"
+	"vmdemo/kvm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func StartVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.StartVM(vmName)
+	err := kvm.StartVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -32,7 +32,7 @@ func StopVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.ShutdownVM(vmName)
+	err := kvm.ShutdownVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -49,7 +49,7 @@ func SuspendVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.SuspendVM(vmName)
+	err := kvm.SuspendVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -66,7 +66,7 @@ func ResumeVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.ResumeVM(vmName)
+	err := kvm.ResumeVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -83,7 +83,7 @@ func ForceShutdownVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.ForceShutdownVM(vmName)
+	err := kvm.ForceShutdownVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -100,7 +100,7 @@ func DeleteVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.DeleteVM(vmName)
+	err := kvm.DeleteVM(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -112,21 +112,21 @@ func DeleteVMHandler(c *gin.Context) {
 // ListVMsHandler 获取虚拟机列表的接口
 func ListVMsHandler(c *gin.Context) {
 	listType := c.DefaultQuery("type", "all") // 默认获取所有虚拟机
-	var vmListType vmopts.ListType
+	var vmListType kvm.ListType
 
 	switch listType {
 	case "active":
-		vmListType = vmopts.Active
+		vmListType = kvm.Active
 	case "inactive":
-		vmListType = vmopts.Inactive
+		vmListType = kvm.Inactive
 	case "all":
-		vmListType = vmopts.All
+		vmListType = kvm.All
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list type"})
 		return
 	}
 
-	vms, err := vmopts.GetVMList(vmListType)
+	vms, err := kvm.GetVMList(vmListType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -143,7 +143,7 @@ func GetVMInfoHandler(c *gin.Context) {
 		return
 	}
 
-	info, err := vmopts.GetVMInfo(vmName)
+	info, err := kvm.GetVMInfo(vmName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -162,7 +162,7 @@ func CreateVMHandler(c *gin.Context) {
 		return
 	}
 
-	err := vmopts.CreateVMFromXML(vmName, xmlConfig)
+	err := kvm.CreateVMFromXML(vmName, xmlConfig)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

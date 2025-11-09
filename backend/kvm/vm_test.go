@@ -1,4 +1,4 @@
-package vmopts
+package kvm
 
 import (
 	"os"

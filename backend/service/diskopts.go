@@ -2,19 +2,19 @@ package service
 
 import (
 	"net/http"
-	"vmdemo/vmopts"
+	"vmdemo/kvm"
 
 	"github.com/gin-gonic/gin"
 )
 
 // DiskPoolHandler 表示硬盘池的操作接口
 type DiskPoolHandler struct {
-	DiskPool *vmopts.DiskPool
+	DiskPool *kvm.DiskPool
 }
 
 // NewDiskPoolHandler 创建一个新的硬盘池处理器
 func NewDiskPoolHandler(poolPath string) (*DiskPoolHandler, error) {
-	diskPool, err := vmopts.NewDiskPool(poolPath)
+	diskPool, err := kvm.NewDiskPool(poolPath)
 	if err != nil {
 		return nil, err
 	}
