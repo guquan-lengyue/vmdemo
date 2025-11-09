@@ -248,6 +248,12 @@ func editVmUsb(vmName, usbId, action string) error {
 	`
 	xml = fmt.Sprintf(xml, vendor, device)
 	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	defer func() {
+		err := os.Remove(xmlPath)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", xmlPath, err)
+		}
+	}()
 	if err != nil {
 		return err
 	}
