@@ -219,27 +219,39 @@ func CreateVMFromXML(vmName, xmlConfig string) error {
 }
 
 // AttachUsbDevice 为虚拟机添加usb设备
-func AttachUsbDevice(vmName, xml string) error {
-	xmlPath := fmt.Sprintf("/tmp/%s_usb.xml", vmName)
-	err := os.WriteFile(xmlPath, []byte(xml), 0655)
-	if err != nil {
-		return err
-	}
-	_, err = ExecVirshCommand("attach-device", vmName, xmlPath)
-	if err != nil {
-		return err
-	}
-	return nil
+func AttachUsbDevice(vmName, usbId string) error {
+	return editVmUsb(vmName, usbId, "attach-device")
+
 }
 
 // DetachUsbDevice 为虚拟机移除usb设备
-func DetachUsbDevice(vmName, xml string) error {
-	xmlPath := fmt.Sprintf("/tmp/%s_usb.xml", vmName)
+// vmName 虚拟机名称
+// usbId usb设备id如:0930:6545
+func DetachUsbDevice(vmName, usbId string) error {
+	return editVmUsb(vmName, usbId, "detach-device")
+}
+
+func editVmUsb(vmName, usbId, action string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_%s_usb.xml", vmName, usbId)
+	split := strings.Split(usbId, ":")
+	vendor := split[0]
+	device := split[1]
+	xml := `
+	<hostdev mode="subsystem" type="usb" managed="yes">
+	  <source>
+		<vendor id="0x%s"/>
+		<product id="0x%s"/>
+	  </source>
+	  <alias name="hostdev0"/>
+	  <address type="usb" bus="0" port="1"/>
+	</hostdev>
+	`
+	xml = fmt.Sprintf(xml, vendor, device)
 	err := os.WriteFile(xmlPath, []byte(xml), 0655)
 	if err != nil {
 		return err
 	}
-	_, err = ExecVirshCommand("detach-device", vmName, xmlPath)
+	_, err = ExecVirshCommand(action, vmName, xmlPath)
 	if err != nil {
 		return err
 	}

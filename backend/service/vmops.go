@@ -171,6 +171,44 @@ func CreateVMHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "VM created successfully", "vmName": vmName})
 }
 
+// AttachUsbDeviceHandler 为虚拟机添加usb设备的接口
+func AttachUsbDeviceHandler(c *gin.Context) {
+	vmName := c.PostForm("name")
+	usbXml := c.PostForm("usbXml")
+
+	if vmName == "" || usbXml == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB XML are required"})
+		return
+	}
+
+	err := kvm.AttachUsbDevice(vmName, usbXml)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "USB device attached successfully", "vmName": vmName})
+}
+
+// DetachUsbDeviceHandler 为虚拟机移除usb设备的接口
+func DetachUsbDeviceHandler(c *gin.Context) {
+	vmName := c.PostForm("name")
+	usbId := c.PostForm("usbId")
+
+	if vmName == "" || usbId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB ID are required"})
+		return
+	}
+
+	err := kvm.DetachUsbDevice(vmName, usbId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "USB device detached successfully", "vmName": vmName})
+}
+
 // RegisterVMOpsRoutes 注册虚拟机操作的路由
 func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 	vmGroup := router.Group("/vm")
@@ -184,5 +222,7 @@ func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 		vmGroup.GET("/list", ListVMsHandler)
 		vmGroup.GET("/info", GetVMInfoHandler)
 		vmGroup.POST("/create", CreateVMHandler)
+		vmGroup.POST("/attach-usb", AttachUsbDeviceHandler)
+		vmGroup.POST("/detach-usb", DetachUsbDeviceHandler)
 	}
 }
