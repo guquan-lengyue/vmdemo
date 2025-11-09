@@ -33,7 +33,6 @@ func ExecVirshCommand(args ...string) (string, error) {
 	return stdOut.String(), nil
 }
 
-// GetVMList 读取虚拟机列表
 type ListType string
 
 const (
@@ -191,7 +190,12 @@ func CreateVMFromXML(vmName, xmlConfig string) error {
 	// 将xml文本写入到临时文件中,
 	xmlPath := "/tmp/" + vmName + ".xml"
 	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)
-	defer os.Remove(xmlPath) // 创建完成后删除临时文件
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", name, err)
+		}
+	}(xmlPath) // 创建完成后删除临时文件
 	// 判断xml内定义的磁盘是否存在
 	diskPaths := extractDisk(xmlConfig)
 	for _, diskPath := range diskPaths {
