@@ -3,7 +3,7 @@
     <div class="vnc-controls">
       <input
         v-model="vncConfig.name"
-        placeholder="虚拟机名词"
+        placeholder="虚拟机名称"
         class="input"
       />
       <button @click="connectVNC" :disabled="isConnecting">
