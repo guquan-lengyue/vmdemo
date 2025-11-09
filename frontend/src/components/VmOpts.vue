@@ -48,15 +48,26 @@
         <input type="text" id="newVmName" v-model="newVmName" placeholder="请输入新虚拟机名称" />
       </div>
       <div class="form-group">
-        <label for="xmlConfig">XML 配置:</label>
-        <textarea
-          id="xmlConfig"
-          v-model="xmlConfig"
-          rows="10"
-          placeholder="在此处粘贴 XML 配置"
-        ></textarea>
+        <label for="newVmCPU">CPU 核心数:</label>
+        <input type="number" id="newVmCPU" v-model.number="newVmCPU" placeholder="请输入 CPU 核心数" />
       </div>
-      <button @click="createVMFromXML">创建虚拟机</button>
+      <div class="form-group">
+        <label for="newVmMemory">内存 (GB):</label>
+        <input type="number" id="newVmMemory" v-model.number="newVmMemory" placeholder="请输入内存大小 (GB)" />
+      </div>
+      <div class="form-group">
+        <label for="newVmDiskPath">磁盘路径:</label>
+        <select id="newVmDiskPath" v-model="newVmDiskPath">
+          <option v-for="disk in availableDisks" :key="disk.name" :value="disk.path">
+            {{ disk.name }} - {{ disk.size }}
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="newVmIsoPath">ISO 路径:</label>
+        <input type="text" id="newVmIsoPath" v-model="newVmIsoPath" placeholder="请输入 ISO 路径" />
+      </div>
+      <button @click="createVMFromForm">创建虚拟机</button>
     </div>
 
     <!-- 结果显示 -->
@@ -86,14 +97,19 @@ import {
   deleteVM,
   listVMs,
   getVMInfo,
-  createVM,
+  createVM
 } from '@/api/vmopts.js'
+import { listDisks } from '@/api/diskopts.js'
 
 const vmName = ref('')
-const newVmName = ref('')
-const xmlConfig = ref('')
+const newVmName = ref('my-new-vm')
+const newVmCPU = ref(2)
+const newVmMemory = ref(4) // in GiB
+const newVmDiskPath = ref('')
+const newVmIsoPath = ref('/home/k/下载/ubuntu-25.10-desktop-amd64.iso')
 const listType = ref('all')
 const vmList = ref([])
+const availableDisks = ref([])
 const result = ref(null)
 const error = ref(null)
 const loading = ref(false)
@@ -145,20 +161,116 @@ async function fetchVMList() {
   }
 }
 
-async function createVMFromXML() {
-  if (!newVmName.value || !xmlConfig.value) {
-    error.value = '新虚拟机名称和 XML 配置不能为空。'
+async function fetchAvailableDisks() {
+  try {
+    const response = await listDisks()
+    availableDisks.value = response.disks || []
+    if (availableDisks.value.length > 0) {
+      newVmDiskPath.value = availableDisks.value[0].path
+    }
+  } catch (e) {
+    error.value = '获取可用磁盘列表失败: ' + e.message
+  }
+}
+
+async function createVMFromForm() {
+  if (
+    !newVmName.value ||
+    !newVmCPU.value ||
+    !newVmMemory.value ||
+    !newVmIsoPath.value ||
+    !newVmDiskPath.value
+  ) {
+    error.value = '请填写所有虚拟机创建字段。'
     result.value = null
     return
   }
+
+  const memoryInKiB = newVmMemory.value * 1024 * 1024
+
+  const xml = `
+<domain type='kvm'>
+  <name>${newVmName.value}</name>
+  <memory unit='KiB'>${memoryInKiB}</memory>
+  <vcpu placement='static'>${newVmCPU.value}</vcpu>
+  <os firmware='efi'>
+    <type arch='x86_64' machine='pc-q35-8.2'>hvm</type>
+    <firmware>
+      <feature enabled='yes' name='enrolled-keys'/>
+      <feature enabled='yes' name='secure-boot'/>
+    </firmware>
+    <loader readonly='yes' secure='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.ms.fd</loader>
+    <nvram template='/usr/share/OVMF/OVMF_VARS_4M.ms.fd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <smm state='on'/>
+  </features>
+  <cpu mode='host-passthrough' check='none' migratable='on'/>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2' discard='unmap'/>
+      <source file='${newVmDiskPath.value}'/>
+      <target dev='vda' bus='virtio'/>
+      <boot order='2'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='${newVmIsoPath.value}'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+      <boot order='1'/>
+    </disk>
+    <controller type='usb' index='0' model='qemu-xhci' ports='15'/>
+    <controller type='pci' index='0' model='pcie-root'/>
+    <interface type='network'>
+      <source network='default'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'>
+      <target type='isa-serial' port='0'>
+        <model name='isa-serial'/>
+      </target>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='mouse' bus='ps2'/>
+    <input type='keyboard' bus='ps2'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
+    <video>
+      <model type='virtio' heads='1' primary='yes'/>
+    </video>
+    <memballoon model='virtio'/>
+    <rng model='virtio'>
+      <backend model='random'>/dev/urandom</backend>
+    </rng>
+  </devices>
+</domain>
+  `
+
   loading.value = true
   error.value = null
   result.value = null
   try {
-    const response = await createVM(newVmName.value, xmlConfig.value)
+    const response = await createVM(newVmName.value, xml)
     result.value = response
-    newVmName.value = ''
-    xmlConfig.value = ''
     fetchVMList() // Refresh list after creating a new VM
   } catch (e) {
     error.value = e.message
@@ -169,6 +281,7 @@ async function createVMFromXML() {
 
 onMounted(() => {
   fetchVMList()
+  fetchAvailableDisks()
 })
 </script>
 

@@ -14,6 +14,7 @@ type DiskInfo struct {
 	Format string `json:"format"`
 	Size   string `json:"size"`
 	Name   string `json:"name"`
+	Path   string `json:"path"`
 }
 
 // CreateDisk 创建虚拟盘
@@ -48,11 +49,17 @@ func GetDiskInfo(path string) (*DiskInfo, error) {
 	info.Path = filepath.Base(info.Path)
 	// 将size转为GB,保留两位小数
 	size := float32(info.Size) / 1024 / 1024 / 1024
+	// path 转绝对路径
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path: %s, error: %s", path, err)
+	}
 	// 转换为 DiskInfo 类型
 	rst := &DiskInfo{
 		Format: info.Format,
 		Size:   fmt.Sprintf("%.2fGB", size),
 		Name:   info.Path,
+		Path:   absPath,
 	}
 	return rst, nil
 }
