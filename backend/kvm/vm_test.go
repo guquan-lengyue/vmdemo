@@ -97,3 +97,41 @@ func TestCreateVMFromXML(t *testing.T) {
 		t.Errorf("CreateVMFromXML(%s) failed: %v", vmName, err)
 	}
 }
+
+// TestAttachUsbDevice 测试添加usb设备
+func TestAttachUsbDevice(t *testing.T) {
+	vmName := "ubuntu"
+	usbXml := `
+	<hostdev mode="subsystem" type="usb" managed="yes">
+	  <source>
+		<vendor id="0x0930"/>
+		<product id="0x6545"/>
+	  </source>
+	  <alias name="hostdev0"/>
+	  <address type="usb" bus="0" port="1"/>
+	</hostdev>
+	`
+	err := AttachUsbDevice(vmName, usbXml)
+	if err != nil {
+		t.Errorf("AttachUsbDevice(%s) failed: %v", vmName, err)
+	}
+}
+
+// TestDetachUsbDevice 测试移除usb设备
+func TestDetachUsbDevice(t *testing.T) {
+	vmName := "ubuntu"
+	usbXml := `
+	<hostdev mode="subsystem" type="usb" managed="yes">
+	  <source>
+		<vendor id="0x0930"/>
+		<product id="0x6545"/>
+	  </source>
+	  <alias name="hostdev0"/>
+	  <address type="usb" bus="0" port="1"/>
+	</hostdev>
+	`
+	err := DetachUsbDevice(vmName, usbXml)
+	if err != nil {
+		t.Errorf("DetachUsbDevice(%s) failed: %v", vmName, err)
+	}
+}

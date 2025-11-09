@@ -217,3 +217,31 @@ func CreateVMFromXML(vmName, xmlConfig string) error {
 	_, err = ExecVirshCommand("create", "--file", xmlPath)
 	return err
 }
+
+// AttachUsbDevice 为虚拟机添加usb设备
+func AttachUsbDevice(vmName, xml string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_usb.xml", vmName)
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand("attach-device", vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DetachUsbDevice 为虚拟机移除usb设备
+func DetachUsbDevice(vmName, xml string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_usb.xml", vmName)
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand("detach-device", vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
