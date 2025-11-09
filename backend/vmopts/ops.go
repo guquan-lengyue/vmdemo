@@ -119,7 +119,7 @@ func parseTextVMList(output string) ([]VMInfo, error) {
 	// 跳过标题行（前2行）
 	for i := 2; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
-		if line == "" || strings.HasPrefix(line, "-") {
+		if line == "" {
 			continue
 		}
 

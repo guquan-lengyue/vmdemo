@@ -1,15 +1,13 @@
-
 <template>
   <div>
-     <NoVncViewer />
+    <NoVncViewer />
+    <VmOpts />
   </div>
 </template>
 
 <script setup>
-import NoVncViewer from './components/NoVncViewer.vue';
+import NoVncViewer from '@/components/NoVncViewer.vue'
+import VmOpts from '@/components/VmOpts.vue'
 </script>
 
-
-<style scoped>
-
-</style>
+<style scoped></style>
