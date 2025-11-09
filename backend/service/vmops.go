@@ -177,7 +177,7 @@ func AttachUsbDeviceHandler(c *gin.Context) {
 	usbId := c.Query("usbId")
 
 	if vmName == "" || usbId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB XML are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB id are required"})
 		return
 	}
 
