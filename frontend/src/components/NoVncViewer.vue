@@ -1,9 +1,5 @@
 <template>
   <div class="novnc-container">
-    <!-- 1. noVNC 渲染容器（必须指定宽高） -->
-    <div ref="vncContainer" class="vnc-viewer"></div>
-
-    <!-- 2. 连接控制区域（输入参数 + 按钮） -->
     <div class="vnc-controls">
       <input
         v-model="vncConfig.name"
@@ -15,11 +11,10 @@
       </button>
       <button @click="disconnectVNC" :disabled="!isConnected">断开连接</button>
     </div>
-    <!-- 3. 连接状态提示 -->
     <div class="vnc-status" :class="statusClass">
       {{ statusText }}
     </div>
-    <!--    -->
+    <div ref="vncContainer" class="vnc-viewer"></div>
   </div>
 </template>
 
@@ -140,17 +135,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .novnc-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 20px;
+  height: 100%;
   box-sizing: border-box;
 }
 
 /* 渲染容器：必须指定固定宽高或百分比，否则画面无法显示 */
 .vnc-viewer {
   width: 100%;
-  height: 600px; /* 高度可根据需求调整 */
+  height: 100%; /* 高度可根据需求调整 */
+  max-width: 1920px;
+  max-height: 1080px;
   border: 1px solid #eee;
   border-radius: 4px;
   overflow: hidden;
