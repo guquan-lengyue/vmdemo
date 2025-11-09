@@ -41,6 +41,7 @@ func forwardTcp(wsConn *websocket.Conn, conn net.Conn) {
 		if wsConn != nil {
 			wsConn.Close()
 		}
+		log.Printf("%s: forwardTcp closed", time.Now().Format(time.Stamp))
 	}()
 	for {
 		if (conn == nil) || (wsConn == nil) {
@@ -69,6 +70,7 @@ func forwardWeb(wsConn *websocket.Conn, conn net.Conn) {
 		if wsConn != nil {
 			wsConn.Close()
 		}
+		log.Printf("%s: forwardWeb closed", time.Now().Format(time.Stamp))
 	}()
 	for {
 		if (conn == nil) || (wsConn == nil) {
