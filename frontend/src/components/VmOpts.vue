@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   startVM,
   stopVM,
@@ -135,6 +135,11 @@ const error = ref(null)
 const loading = ref(false)
 const usbId = ref('')
 
+// 监听usbId变化并删除空格
+watch(usbId, (newValue, oldValue) => {
+  usbId.value = newValue.trim()
+})
+
 const actions = {
   start: startVM,
   stop: stopVM,
@@ -151,6 +156,11 @@ async function handleAttachUsbClick() {
     result.value = null
     return
   }
+  if (!vmName.value) {
+    error.value = '请输入虚拟机名称。'
+    result.value = null
+    return
+  }
   try {
     const response = await attachUsb(vmName.value, usbId.value)
     result.value = response
@@ -163,6 +173,11 @@ async function handleAttachUsbClick() {
 async function handleDetachUsbClick() {
   if (!usbId.value) {
     error.value = '请输入USB设备ID。'
+    result.value = null
+    return
+  }
+  if (!vmName.value) {
+    error.value = '请输入虚拟机名称。'
     result.value = null
     return
   }
