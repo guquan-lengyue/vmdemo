@@ -6,20 +6,8 @@
     <!-- 2. 连接控制区域（输入参数 + 按钮） -->
     <div class="vnc-controls">
       <input
-        v-model="vncConfig.host"
-        placeholder="VNC 服务器地址（如 192.168.1.100）"
-        class="input"
-      />
-      <input
-        v-model="vncConfig.wsPort"
-        type="number"
-        placeholder="WebSocket 端口（如 5700）"
-        class="input"
-      />
-      <input
-        v-model="vncConfig.password"
-        type="password"
-        placeholder="VNC 密码（可选）"
+        v-model="vncConfig.name"
+        placeholder="虚拟机名词"
         class="input"
       />
       <button @click="connectVNC" :disabled="isConnecting">
@@ -50,10 +38,7 @@ const statusClass = ref('status-idle') // 状态样式（用于颜色区分）
 
 // 2. VNC 连接配置（可根据需求扩展）
 const vncConfig = ref({
-  host: 'localhost', // VNC 服务器 IP（如宿主机 IP）
-  wsPort: 5900, // WebSocket 端口（非原生 VNC 端口）
-  password: '', // VNC 密码（若服务器设置了密码）
-  path: '/websockify', // WebSocket 路径（默认 /，若用 Nginx 转发需匹配）
+  name: ''
 })
 
 // 3. 初始化 RFB 实例，建立连接
@@ -63,9 +48,11 @@ const connectVNC = async () => {
     statusClass.value = 'status-error'
     return
   }
-
+  // 读取当前页面的 host 和 port
+  const host = window.location.hostname
+  const port = window.location.port
   // 拼接 WebSocket 地址（格式：ws://host:port/path）
-  const wsUrl = `ws://${vncConfig.value.host}:${vncConfig.value.wsPort}${vncConfig.value.path}`
+  const wsUrl = `ws://${host}:${port}/api/vnc/${vncConfig.value.name}`
 
   try {
     isConnecting.value = true
