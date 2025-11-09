@@ -172,7 +172,7 @@ func CreateVMHandler(c *gin.Context) {
 }
 
 // RegisterVMOpsRoutes 注册虚拟机操作的路由
-func RegisterVMOpsRoutes(router *gin.Engine) {
+func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 	vmGroup := router.Group("/vm")
 	{
 		vmGroup.GET("/start", StartVMHandler)

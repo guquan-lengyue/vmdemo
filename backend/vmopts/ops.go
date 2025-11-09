@@ -13,9 +13,9 @@ import (
 
 // VMInfo 表示虚拟机的基本信息
 type VMInfo struct {
-	ID    string
-	Name  string
-	State string
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	State string `json:"state"`
 }
 
 // ExecVirshCommand 执行 virsh 命令并返回输出结果

@@ -7,11 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	DefaultDiskPoolPath = "./disks"
+)
+
 func main() {
 	// 启动gin接口服务
 	r := gin.Default()
-	service.RegisterVMOpsRoutes(r)
-	err := r.Run(":8080")
+	g := r.Group("/api")
+	service.RegisterVMOpsRoutes(g)
+	err := service.RegisterDiskRoutes(g, DefaultDiskPoolPath)
+	if err != nil {
+		log.Fatalf("Error registering disk routes: %v", err)
+	}
+	err = r.Run(":8080")
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
