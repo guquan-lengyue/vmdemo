@@ -173,8 +173,8 @@ func CreateVMHandler(c *gin.Context) {
 
 // AttachUsbDeviceHandler 为虚拟机添加usb设备的接口
 func AttachUsbDeviceHandler(c *gin.Context) {
-	vmName := c.PostForm("name")
-	usbId := c.PostForm("usbId")
+	vmName := c.Query("name")
+	usbId := c.Query("usbId")
 
 	if vmName == "" || usbId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB XML are required"})
@@ -192,8 +192,8 @@ func AttachUsbDeviceHandler(c *gin.Context) {
 
 // DetachUsbDeviceHandler 为虚拟机移除usb设备的接口
 func DetachUsbDeviceHandler(c *gin.Context) {
-	vmName := c.PostForm("name")
-	usbId := c.PostForm("usbId")
+	vmName := c.Query("name")
+	usbId := c.Query("usbId")
 
 	if vmName == "" || usbId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB ID are required"})
