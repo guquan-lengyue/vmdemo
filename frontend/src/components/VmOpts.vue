@@ -17,6 +17,14 @@
         <button @click="performAction('forceShutdown')">强制关闭</button>
         <button @click="performAction('delete')">删除</button>
         <button @click="performAction('getInfo')">获取信息</button>
+        <div class="form-group">
+          <label for="usbId">USB设备ID:</label>
+          <input type="text" id="usbId" v-model="usbId" placeholder="请输入USB设备ID" />
+        </div>
+        <div>
+          <button @click="handleAttachUsbClick">挂载USB设备</button>
+          <button @click="handleDetachUsbClick">卸载USB设备</button>
+        </div>
       </div>
     </div>
 
@@ -49,11 +57,21 @@
       </div>
       <div class="form-group">
         <label for="newVmCPU">CPU 核心数:</label>
-        <input type="number" id="newVmCPU" v-model.number="newVmCPU" placeholder="请输入 CPU 核心数" />
+        <input
+          type="number"
+          id="newVmCPU"
+          v-model.number="newVmCPU"
+          placeholder="请输入 CPU 核心数"
+        />
       </div>
       <div class="form-group">
         <label for="newVmMemory">内存 (GB):</label>
-        <input type="number" id="newVmMemory" v-model.number="newVmMemory" placeholder="请输入内存大小 (GB)" />
+        <input
+          type="number"
+          id="newVmMemory"
+          v-model.number="newVmMemory"
+          placeholder="请输入内存大小 (GB)"
+        />
       </div>
       <div class="form-group">
         <label for="newVmDiskPath">磁盘路径:</label>
@@ -97,7 +115,9 @@ import {
   deleteVM,
   listVMs,
   getVMInfo,
-  createVM
+  createVM,
+  attachUsb,
+  detachUsb,
 } from '@/api/vmopts.js'
 import { listDisks } from '@/api/diskopts.js'
 
@@ -113,6 +133,7 @@ const availableDisks = ref([])
 const result = ref(null)
 const error = ref(null)
 const loading = ref(false)
+const usbId = ref('')
 
 const actions = {
   start: startVM,
@@ -122,6 +143,36 @@ const actions = {
   forceShutdown: forceShutdownVM,
   delete: deleteVM,
   getInfo: getVMInfo,
+}
+
+async function handleAttachUsbClick() {
+  if (!usbId.value) {
+    error.value = '请输入USB设备ID。'
+    result.value = null
+    return
+  }
+  try {
+    const response = await attachUsb(vmName.value, usbId.value)
+    result.value = response
+  } catch (e) {
+    error.value = e.message
+    result.value = null
+  }
+}
+
+async function handleDetachUsbClick() {
+  if (!usbId.value) {
+    error.value = '请输入USB设备ID。'
+    result.value = null
+    return
+  }
+  try {
+    const response = await detachUsb(vmName.value, usbId.value)
+    result.value = response
+  } catch (e) {
+    error.value = e.message
+    result.value = null
+  }
 }
 
 async function performAction(action) {
@@ -299,7 +350,6 @@ onMounted(() => {
   border: 1px solid #ccc;
   border-radius: 5px;
 }
-
 
 .form-group {
   margin-bottom: 15px;

@@ -174,14 +174,14 @@ func CreateVMHandler(c *gin.Context) {
 // AttachUsbDeviceHandler 为虚拟机添加usb设备的接口
 func AttachUsbDeviceHandler(c *gin.Context) {
 	vmName := c.PostForm("name")
-	usbXml := c.PostForm("usbXml")
+	usbId := c.PostForm("usbId")
 
-	if vmName == "" || usbXml == "" {
+	if vmName == "" || usbId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and USB XML are required"})
 		return
 	}
 
-	err := kvm.AttachUsbDevice(vmName, usbXml)
+	err := kvm.AttachUsbDevice(vmName, usbId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

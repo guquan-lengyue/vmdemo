@@ -61,3 +61,12 @@ export function createVM(name, xmlConfig) {
     body: formData,
   }).then(handleResponse);
 }
+
+// 挂载USB设备
+export function attachUsb(name, usbId) {
+  return fetch(`${API_BASE_URL}/vm/attach-usb?name=${encodeURIComponent(name)}&usbId=${encodeURIComponent(usbId)}`).then(handleResponse);
+}
+// 卸载USB设备
+export function detachUsb(name, usbId) {
+  return fetch(`${API_BASE_URL}/vm/detach-usb?name=${encodeURIComponent(name)}&usbId=${encodeURIComponent(usbId)}`).then(handleResponse);
+}
