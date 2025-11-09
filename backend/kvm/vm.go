@@ -16,6 +16,7 @@ type VMInfo struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	State string `json:"state"`
+	Vnc   string `json:"vnc"`
 }
 
 // ExecVirshCommand 执行 virsh 命令并返回输出结果
@@ -77,7 +78,12 @@ type Disk struct {
 }
 
 type Domain struct {
-	Disks []Disk `xml:"devices>disk"`
+	Disks    []Disk `xml:"devices>disk"`
+	Graphics []struct {
+		Type   string `xml:"type,attr"`
+		Port   string `xml:"port,attr"`
+		Listen string `xml:"listen,attr"`
+	} `xml:"devices>graphics"`
 }
 
 // extractDisk 解析xml内容 读取xpath=//disk@type='file' 且//disk@device='disk' 下的source/@file属性值
@@ -170,7 +176,8 @@ func ResumeVM(vmName string) error {
 
 // GetVMInfo 获取指定虚拟机的详细信息
 func GetVMInfo(vmName string) (string, error) {
-	return ExecVirshCommand("dominfo", vmName)
+	command, err := ExecVirshCommand("dumpxml", vmName)
+	return command, err
 }
 
 // ForceShutdownVM 强制关闭指定的虚拟机

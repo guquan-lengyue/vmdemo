@@ -1,35 +1,45 @@
+// A Go version WebSocket to TCP socket proxy
+// Copyright 2021 Michael.liu
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+// from https://github.com/novnc/websockify-other/tree/master/golang
+
 package service
 
 import (
+	"encoding/xml"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
+	"vmdemo/kvm"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-type VNCInfo struct {
-	SourceAddr string
-	TargetAddr string
-	upgrader   *websocket.Upgrader
+var (
+	targetAddr string
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
-func (v *VNCInfo) forwardTcp(wsConn *websocket.Conn, conn net.Conn) {
+func forwardTcp(wsConn *websocket.Conn, conn net.Conn) {
 	var tcpBuffer [1024]byte
 	defer func() {
 		if conn != nil {
-			err := conn.Close()
-			if err != nil {
-				log.Printf("%s: closing connection: %s", time.Now().Format(time.Stamp), err)
-			}
+			conn.Close()
 		}
 		if wsConn != nil {
-			err := wsConn.Close()
-			if err != nil {
-				log.Printf("%s: closing connection: %s", time.Now().Format(time.Stamp), err)
-			}
+			wsConn.Close()
 		}
 	}()
 	for {
@@ -48,22 +58,16 @@ func (v *VNCInfo) forwardTcp(wsConn *websocket.Conn, conn net.Conn) {
 	}
 }
 
-func (v *VNCInfo) forwardWeb(wsConn *websocket.Conn, conn net.Conn) {
+func forwardWeb(wsConn *websocket.Conn, conn net.Conn) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("%s: reading from WS failed: %s", time.Now().Format(time.Stamp), err)
 		}
 		if conn != nil {
-			err := conn.Close()
-			if err != nil {
-				log.Printf("%s: closing connection: %s", time.Now().Format(time.Stamp), err)
-			}
+			conn.Close()
 		}
 		if wsConn != nil {
-			err := wsConn.Close()
-			if err != nil {
-				log.Printf("%s: closing connection: %s", time.Now().Format(time.Stamp), err)
-			}
+			wsConn.Close()
 		}
 	}()
 	for {
@@ -80,27 +84,39 @@ func (v *VNCInfo) forwardWeb(wsConn *websocket.Conn, conn net.Conn) {
 	}
 }
 
-func (v *VNCInfo) ServeWs(c *gin.Context) {
-	if v.upgrader == nil {
-		v.upgrader = &websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				return true
-			},
-		}
-	}
-	ws, err := v.upgrader.Upgrade(c.Writer, c.Request, nil)
+func serveWs(w http.ResponseWriter, r *http.Request) {
+	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("%s: failed to upgrade to WS: %s", time.Now().Format(time.Stamp), err)
 		return
 	}
 
-	vnc, err := net.Dial("tcp", v.TargetAddr)
+	vnc, err := net.Dial("tcp", targetAddr)
 	if err != nil {
 		log.Printf("%s: failed to bind to the VNC Server: %s", time.Now().Format(time.Stamp), err)
 	}
 
-	go v.forwardTcp(ws, vnc)
-	go v.forwardWeb(ws, vnc)
+	go forwardTcp(ws, vnc)
+	go forwardWeb(ws, vnc)
+}
+
+func CrateVncWs(r *gin.RouterGroup) {
+	r.GET("/vnc/:vmName", func(c *gin.Context) {
+		vmName := c.Param("vmName")
+		info, err := kvm.GetVMInfo(vmName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		vncInfo := kvm.Domain{}
+		err = xml.Unmarshal([]byte(info), &vncInfo)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		// 设置目标地址
+		address := strings.Replace(vncInfo.Graphics[0].Listen, "0.0.0.0", "127.0.0.1", 1)
+		targetAddr = fmt.Sprintf("%s:%s", address, vncInfo.Graphics[0].Port)
+		serveWs(c.Writer, c.Request)
+	})
 }

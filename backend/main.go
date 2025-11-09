@@ -20,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error registering disk routes: %v", err)
 	}
+	service.CrateVncWs(g)
 	err = r.Run(":8080")
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
