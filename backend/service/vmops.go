@@ -222,7 +222,7 @@ func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 		vmGroup.GET("/list", ListVMsHandler)
 		vmGroup.GET("/info", GetVMInfoHandler)
 		vmGroup.POST("/create", CreateVMHandler)
-		vmGroup.POST("/attach-usb", AttachUsbDeviceHandler)
-		vmGroup.POST("/detach-usb", DetachUsbDeviceHandler)
+		vmGroup.GET("/attach-usb", AttachUsbDeviceHandler)
+		vmGroup.GET("/detach-usb", DetachUsbDeviceHandler)
 	}
 }
