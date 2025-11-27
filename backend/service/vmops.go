@@ -209,6 +209,70 @@ func DetachUsbDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "USB device detached successfully", "vmName": vmName})
 }
 
+// AttachPCIDeviceHandler 为虚拟机添加 PCI 设备的接口
+func AttachPCIDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	pciAddr := c.Query("pciAddr")
+	if vmName == "" || pciAddr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and PCI address are required"})
+		return
+	}
+	err := kvm.AttachPCIDevice(vmName, pciAddr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "PCI device attached successfully", "vmName": vmName, "pciAddr": pciAddr})
+}
+
+// DetachPCIDeviceHandler 为虚拟机移除 PCI 设备的接口
+func DetachPCIDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	pciAddr := c.Query("pciAddr")
+	if vmName == "" || pciAddr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and PCI address are required"})
+		return
+	}
+	err := kvm.DetachPCIDevice(vmName, pciAddr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "PCI device detached successfully", "vmName": vmName, "pciAddr": pciAddr})
+}
+
+// AttachMdevDeviceHandler 为虚拟机添加 mdev 设备的接口
+func AttachMdevDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	uuid := c.Query("uuid")
+	if vmName == "" || uuid == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and mdev UUID are required"})
+		return
+	}
+	err := kvm.AttachMdevDevice(vmName, uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mdev device attached successfully", "vmName": vmName, "uuid": uuid})
+}
+
+// DetachMdevDeviceHandler 为虚拟机移除 mdev 设备的接口
+func DetachMdevDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	uuid := c.Query("uuid")
+	if vmName == "" || uuid == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and mdev UUID are required"})
+		return
+	}
+	err := kvm.DetachMdevDevice(vmName, uuid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mdev device detached successfully", "vmName": vmName, "uuid": uuid})
+}
+
 // RegisterVMOpsRoutes 注册虚拟机操作的路由
 func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 	vmGroup := router.Group("/vm")
@@ -224,5 +288,9 @@ func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 		vmGroup.POST("/create", CreateVMHandler)
 		vmGroup.GET("/attach-usb", AttachUsbDeviceHandler)
 		vmGroup.GET("/detach-usb", DetachUsbDeviceHandler)
+		vmGroup.GET("/attach-pci", AttachPCIDeviceHandler)
+		vmGroup.GET("/detach-pci", DetachPCIDeviceHandler)
+		vmGroup.GET("/attach-mdev", AttachMdevDeviceHandler)
+		vmGroup.GET("/detach-mdev", DetachMdevDeviceHandler)
 	}
 }

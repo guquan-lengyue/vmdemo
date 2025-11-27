@@ -263,3 +263,100 @@ func editVmUsb(vmName, usbId, action string) error {
 	}
 	return nil
 }
+
+// AttachPCIDevice 为虚拟机添加 PCI 设备
+// pciAddr 例如: 0000:00:02.0
+func AttachPCIDevice(vmName, pciAddr string) error {
+	return editVmPci(vmName, pciAddr, "attach-device")
+}
+
+// DetachPCIDevice 为虚拟机移除 PCI 设备
+func DetachPCIDevice(vmName, pciAddr string) error {
+	return editVmPci(vmName, pciAddr, "detach-device")
+}
+
+func editVmPci(vmName, pciAddr, action string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_%s_pci.xml", vmName, strings.ReplaceAll(pciAddr, ":", "_"))
+	// pciAddr 格式要求: 0000:00:02.0 或 00:02.0
+	// Normalize to 0000:00:02.0
+	addr := pciAddr
+	if !strings.Contains(pciAddr, "0000:") {
+		if strings.Count(pciAddr, ":") == 1 {
+			addr = "0000:" + pciAddr
+		}
+	}
+
+	// parse address: 0000:bb:dd.f
+	parts := strings.Split(addr, ":")
+	domain := parts[0]
+	bus := parts[1]
+	slotFunc := parts[2]
+	slotParts := strings.Split(slotFunc, ".")
+	slot := slotParts[0]
+	function := slotParts[1]
+
+	xml := `
+	<hostdev mode="subsystem" type="pci" managed="yes">
+	  <source>
+		<address domain="0x%s" bus="0x%s" slot="0x%s" function="0x%s"/>
+	  </source>
+	</hostdev>
+	`
+	xml = fmt.Sprintf(xml, strings.TrimPrefix(domain, "0x"), strings.TrimPrefix(bus, "0x"), strings.TrimPrefix(slot, "0x"), strings.TrimPrefix(function, "0x"))
+	// If domain/bus/slot fields didn't include 0x prefixes, fmt will keep them, so for safety use:
+	xml = fmt.Sprintf(xml, domain, bus, slot, function)
+
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	defer func() {
+		err := os.Remove(xmlPath)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", xmlPath, err)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand(action, vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AttachMdevDevice 通过 mdev uuid 为虚拟机添加 Intel GVT-g 等媒体设备
+// uuid: mdev uuid，从 /sys/bus/pci/devices/0000:00:02.0/mdev_supported_types/.../create 返回 uuid
+func AttachMdevDevice(vmName, uuid string) error {
+	return editVmMdev(vmName, uuid, "attach-device")
+}
+
+// DetachMdevDevice 移除 mdev uuid
+func DetachMdevDevice(vmName, uuid string) error {
+	return editVmMdev(vmName, uuid, "detach-device")
+}
+
+func editVmMdev(vmName, uuid, action string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_%s_mdev.xml", vmName, uuid)
+	xml := `
+	<hostdev mode="subsystem" type="mdev" managed="yes">
+	  <source>
+		<address uuid="%s"/>
+	  </source>
+	</hostdev>
+	`
+	xml = fmt.Sprintf(xml, uuid)
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	defer func() {
+		err := os.Remove(xmlPath)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", xmlPath, err)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand(action, vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
