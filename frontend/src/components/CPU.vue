@@ -47,6 +47,7 @@ const threads = ref(1)
 
 const xml = computed(() => {
   return `
+<vcpu current="6">${cpuCount.value}</vcpu>
 <cpu mode="${cpuMode.value}">
   <topology sockets="${sockets.value}" cores="${cores.value}" threads="${threads.value}"/>
 </cpu>
