@@ -238,6 +238,4 @@ function xml(cfg_list) {
 `
 }
 
-module.exports = {
-  xml,
-}
+export { xml }
