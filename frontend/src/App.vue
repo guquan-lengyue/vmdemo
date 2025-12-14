@@ -18,7 +18,7 @@
       </div>
     </div>
     <div class="vm-content">
-      <Component :is="componentMap[selectedMenu] || componentMap['overview']" />
+      <Component :is="componentMap[selectedMenu] || componentMap['overview']" :hostMsg="hostMsg" />
     </div>
   </div>
 </template>
@@ -27,6 +27,7 @@
 import { ref } from 'vue'
 import Overview from './components/Overview.vue'
 import CPU from './components/CPU.vue'
+import Memory from './components/Memery.vue'
 
 const selectedMenu = ref('overview')
 
@@ -34,13 +35,19 @@ const selectedMenu = ref('overview')
 const componentMap = {
   overview: Overview,
   cpu: CPU,
-  // 其他组件可以在这里添加
+  memory: Memory,
 }
+// 主机信息
+const hostMsg = ref({
+  hostCpuCount: 16,
+  hostMemory: 4096,
+})
 
 // 使用ref定义按钮组
 const btnGroup = ref([
   { name: '概况', type: 'overview' },
   { name: 'CPU数', type: 'cpu' },
+  { name: '内存', type: 'memory' },
   { name: '磁盘', type: 'disk' },
   { name: 'CDROM', type: 'cdrom' },
   { name: '虚拟网络', type: 'network' },

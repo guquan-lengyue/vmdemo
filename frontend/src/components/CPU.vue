@@ -4,6 +4,10 @@
     <h2>CPU设置</h2>
     <div class="cpu-info">
       <div class="info-item">
+        <span class="label">主机CPU数量:</span>
+        <span class="value">{{ props.hostMsg.hostCpuCount }}</span>
+      </div>
+      <div class="info-item">
         <span class="label">CPU数量:</span>
         <input
           :disabled="isNotManualTopology"
@@ -25,7 +29,7 @@
         <span class="label">手动拓扑:</span>
         <input type="checkbox" v-model="isNotManualTopology" class="checkbox" />
       </div>
-      <div class="info-item">
+      <div v-if="isNotManualTopology" class="info-item">
         <span class="label">CPU拓扑:</span>
         <div class="topology">
           <div class="topology-item">
@@ -66,6 +70,16 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+
+const props = defineProps({
+  hostMsg: {
+    type: Object,
+    required: false,
+    default: () => ({
+      hostCpuCount: 1,
+    }),
+  },
+})
 
 const cpuCount = ref(2)
 const cpuMode = ref('host-passthrough')
@@ -119,7 +133,9 @@ const xml = computed(() => {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
+.value {
+  color: #333;
+}
 h2 {
   margin-bottom: 20px;
   color: #333;
@@ -145,7 +161,6 @@ h2 {
 
 .input-field,
 .select-field {
-  flex: 1;
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
