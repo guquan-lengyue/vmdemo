@@ -51,41 +51,12 @@ const hostMsg = ref({
   hostMemory: 4096,
 })
 
-// 使用ref定义按钮组
+// 使用ref定义按钮组 - 清空所有组件的默认cfg配置
 const btnGroup = ref([
-  {
-    cfg: {
-      name: 'ubuntu25.10',
-      uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
-      osMachine: 'pc',
-      osFirmware: 'bios',
-    },
-    name: '概况',
-    type: 'overview',
-  },
-  {
-    cfg: {
-      cpuCount: 2,
-      cpuMode: 'host-passthrough',
-      isNotManualTopology: false,
-      manualTopology: { sockets: 2, cores: 1, threads: 1 },
-    },
-    name: 'CPU数',
-    type: 'cpu',
-  },
-  { cfg: { memory: 4194304, currentMemory: 4194304 }, name: '内存', type: 'memory' },
-  {
-    cfg: {
-      diskType: 'disk',
-      sourcePath: '/var/lib/libvirt/images/ubuntu25.10.qcow2',
-      diskFormat: 'qcow2',
-      targetDev: 'vda',
-      targetBus: 'virtio',
-      isReadOnly: false,
-    },
-    name: '磁盘',
-    type: 'disk',
-  },
+  { cfg: {}, name: '概况', type: 'overview' },
+  { cfg: {}, name: 'CPU数', type: 'cpu' },
+  { cfg: {}, name: '内存', type: 'memory' },
+  { cfg: {}, name: '磁盘', type: 'disk' },
   { cfg: {}, name: 'CDROM', type: 'cdrom' },
   { cfg: {}, name: '虚拟网络', type: 'network' },
   { cfg: {}, name: '显示协议', type: 'display' },
@@ -104,7 +75,8 @@ const btnGroup = ref([
 // 获取当前选中组件的配置
 const getCurrentCfg = () => {
   const currentItem = btnGroup.value.find((item) => item.type === selectedMenu.value)
-  return currentItem ? currentItem.cfg : {}
+  // 如果cfg为空对象，返回undefined，这样组件会使用自身的默认值
+  return currentItem && Object.keys(currentItem.cfg).length > 0 ? currentItem.cfg : undefined
 }
 
 // 更新组件配置
