@@ -37,6 +37,8 @@ import Memory from './components/Memery.vue'
 import Disk from './components/Disk.vue'
 import Interface from './components/Interface.vue'
 import Display from './components/Display.vue'
+import Sound from './components/Sound.vue'
+import Video from './components/Video.vue'
 
 const selectedMenu = ref('overview')
 
@@ -48,6 +50,8 @@ const componentMap = {
   disk: Disk,
   interface: Interface,
   display: Display,
+  sound: Sound,
+  video: Video,
 }
 
 // 主机信息
@@ -65,6 +69,8 @@ const btnGroup = ref([
   { cfg: {}, name: 'VirtIO-磁盘', type: 'disk' },
   { cfg: {}, name: '虚拟网络', type: 'interface' },
   { cfg: {}, name: '显示协议-VNC', type: 'display' },
+  { cfg: {}, name: '声音', type: 'sound' },
+  { cfg: {}, name: '视频', type: 'video' },
 ])
 
 // 跟踪当前选中的菜单项索引
