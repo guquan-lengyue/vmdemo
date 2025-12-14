@@ -10,16 +10,17 @@
       <div class="info-item">
         <span class="label">CPU数量:</span>
         <input
-          :disabled="isNotManualTopology"
+          :disabled="localCfg.isNotManualTopology"
           type="number"
-          v-model="cpuCount"
+          v-model="localCfg.cpuCount"
           min="1"
           class="input-field"
+          @input="updateCfg"
         />
       </div>
       <div class="info-item">
         <span class="label">CPU模式:</span>
-        <select v-model="cpuMode" class="select-field">
+        <select v-model="localCfg.cpuMode" class="select-field" @change="updateCfg">
           <option value="host-passthrough">host-passthrough</option>
           <option value="host-model">host-model</option>
           <option value="custom">custom</option>
@@ -27,39 +28,47 @@
       </div>
       <div class="info-item">
         <span class="label">手动拓扑:</span>
-        <input type="checkbox" v-model="isNotManualTopology" class="checkbox" />
+        <input
+          type="checkbox"
+          v-model="localCfg.isNotManualTopology"
+          class="checkbox"
+          @change="updateCfg"
+        />
       </div>
-      <div v-if="isNotManualTopology" class="info-item">
+      <div v-if="localCfg.isNotManualTopology" class="info-item">
         <span class="label">CPU拓扑:</span>
         <div class="topology">
           <div class="topology-item">
             <span> sockets: </span>
             <input
-              :disabled="!isNotManualTopology"
+              :disabled="!localCfg.isNotManualTopology"
               type="number"
-              v-model="manualTopology.sockets"
+              v-model="localCfg.manualTopology.sockets"
               min="1"
               class="small-input"
+              @input="updateCfg"
             />
           </div>
           <div class="topology-item">
             <span> cores: </span>
             <input
-              :disabled="!isNotManualTopology"
+              :disabled="!localCfg.isNotManualTopology"
               type="number"
-              v-model="manualTopology.cores"
+              v-model="localCfg.manualTopology.cores"
               min="1"
               class="small-input"
+              @input="updateCfg"
             />
           </div>
           <div class="topology-item">
             <span> threads: </span>
             <input
-              :disabled="!isNotManualTopology"
+              :disabled="!localCfg.isNotManualTopology"
               type="number"
-              v-model="manualTopology.threads"
+              v-model="localCfg.manualTopology.threads"
               min="1"
               class="small-input"
+              @input="updateCfg"
             />
           </div>
         </div>
@@ -79,47 +88,76 @@ const props = defineProps({
       hostCpuCount: 1,
     }),
   },
+  cfg: {
+    type: Object,
+    default: () => ({
+      cpuCount: 2,
+      cpuMode: 'host-passthrough',
+      isNotManualTopology: false,
+      manualTopology: {
+        sockets: 2,
+        cores: 1,
+        threads: 1,
+      },
+    }),
+  },
 })
 
-const cpuCount = ref(2)
-const cpuMode = ref('host-passthrough')
-const manualTopology = ref({
-  sockets: 2,
-  cores: 1,
-  threads: 1,
-})
-const isNotManualTopology = ref(false)
+const emit = defineEmits(['update:cfg'])
 
-watch(cpuCount, (newVal) => {
-  if (isNotManualTopology.value) {
-    return
-  }
-  manualTopology.value = {
-    sockets: newVal,
-    cores: 1,
-    threads: 1,
-  }
-})
+// 本地配置副本
+const localCfg = ref({ ...props.cfg })
 
+// 监听配置变化
 watch(
-  manualTopology,
+  () => props.cfg,
   (newVal) => {
-    if (!isNotManualTopology.value) {
+    localCfg.value = { ...newVal }
+  },
+  { deep: true },
+)
+
+// 更新配置
+const updateCfg = () => {
+  emit('update:cfg', { ...localCfg.value })
+}
+
+// 计算cpuCount和manualTopology的联动
+watch(
+  () => localCfg.value.cpuCount,
+  (newVal) => {
+    if (localCfg.value.isNotManualTopology) {
       return
     }
-    cpuCount.value = newVal.sockets * newVal.cores * newVal.threads
+    localCfg.value.manualTopology = {
+      sockets: newVal,
+      cores: 1,
+      threads: 1,
+    }
+    updateCfg()
+  },
+)
+
+watch(
+  () => localCfg.value.manualTopology,
+  (newVal) => {
+    if (!localCfg.value.isNotManualTopology) {
+      return
+    }
+    localCfg.value.cpuCount = newVal.sockets * newVal.cores * newVal.threads
+    updateCfg()
   },
   { deep: true },
 )
 
 const xml = computed(() => {
   let topology = ''
-  if (!isNotManualTopology.value) {
-    topology = `<topology sockets="${manualTopology.value.sockets}" cores="${manualTopology.value.cores}" threads="${manualTopology.value.threads}"/>`
+  if (!localCfg.value.isNotManualTopology) {
+    topology = `<topology sockets="${localCfg.value.manualTopology.sockets}" cores="${localCfg.value.manualTopology.cores}" threads="${localCfg.value.manualTopology.threads}"/>`
   }
   return `
-<vcpu current="6">${cpuCount.value}</vcpu>
-<cpu mode="${cpuMode.value}">
+<vcpu current="6">${localCfg.value.cpuCount}</vcpu>
+<cpu mode="${localCfg.value.cpuMode}">
   ${topology}
 </cpu>
 `

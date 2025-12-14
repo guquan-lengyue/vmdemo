@@ -4,11 +4,11 @@
     <h2>虚拟机概况</h2>
     <div class="info-item">
       <span class="label">名称:</span>
-      <input class="value" v-model="name" />
+      <input class="value" v-model="localCfg.name" @input="updateCfg" />
     </div>
     <div class="info-item">
       <span class="label">UUID:</span>
-      <span class="value">{{ uuid }}</span>
+      <span class="value">{{ localCfg.uuid }}</span>
     </div>
     <div class="info-item">
       <span class="label">操作系统:</span>
@@ -20,7 +20,13 @@
     </div>
     <div class="info-item">
       <span class="label">固件类型:</span>
-      <select class="value" v-model="osFirmware" name="osFirmware" id="osFirmware">
+      <select
+        class="value"
+        v-model="localCfg.osFirmware"
+        name="osFirmware"
+        id="osFirmware"
+        @change="updateCfg"
+      >
         <option value="bios">BIOS</option>
         <option value="uefi">UEFI</option>
       </select>
@@ -29,31 +35,60 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-const name = ref('ubuntu25.10')
-const uuid = ref('f0715790-cde5-4faf-8869-d8d72dfaf7d8')
-const osMachine = ref('pc')
-const osFirmware = ref('bios')
+// 接收父组件传递的配置
+const props = defineProps({
+  cfg: {
+    type: Object,
+    default: () => ({
+      name: 'ubuntu25.10',
+      uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
+      osMachine: 'pc',
+      osFirmware: 'bios',
+    }),
+  },
+})
 
+// 定义事件
+const emit = defineEmits(['update:cfg'])
+
+// 本地配置副本
+const localCfg = ref({ ...props.cfg })
+
+// 监听配置变化
+watch(
+  () => props.cfg,
+  (newVal) => {
+    localCfg.value = { ...newVal }
+  },
+  { deep: true },
+)
+
+// 更新配置
+const updateCfg = () => {
+  emit('update:cfg', { ...localCfg.value })
+}
+
+// 计算xml
 const xml = computed(() => {
-  return ```
-<name>${name.value}</name>
-<uuid>${uuid.value}</uuid>
+  return `
+<name>${localCfg.value.name}</name>
+<uuid>${localCfg.value.uuid}</uuid>
 <metadata>
   <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
     <libosinfo:os id="http://ubuntu.com/ubuntu/25.10"/>
   </libosinfo:libosinfo>
 </metadata>
-<os firmware="${osFirmware.value}">
-  <type arch="x86_64" machine="${osMachine.value}">hvm</type>
+<os firmware="${localCfg.value.osFirmware}">
+  <type arch="x86_64" machine="${localCfg.value.osMachine}">hvm</type>
 </os>
 <features>
   <acpi/>
   <apic/>
   <vmport state="off"/>
 </features>
-```
+`
 })
 </script>
 

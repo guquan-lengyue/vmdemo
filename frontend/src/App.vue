@@ -18,16 +18,22 @@
       </div>
     </div>
     <div class="vm-content">
-      <Component :is="componentMap[selectedMenu] || componentMap['overview']" :hostMsg="hostMsg" />
+      <Component
+        :is="componentMap[selectedMenu] || componentMap['overview']"
+        :hostMsg="hostMsg"
+        :cfg="getCurrentCfg()"
+        @update:cfg="updateComponentCfg"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import Overview from './components/Overview.vue'
 import CPU from './components/CPU.vue'
 import Memory from './components/Memery.vue'
+import Disk from './components/Disk.vue'
 
 const selectedMenu = ref('overview')
 
@@ -36,7 +42,9 @@ const componentMap = {
   overview: Overview,
   cpu: CPU,
   memory: Memory,
+  disk: Disk,
 }
+
 // 主机信息
 const hostMsg = ref({
   hostCpuCount: 16,
@@ -45,24 +53,67 @@ const hostMsg = ref({
 
 // 使用ref定义按钮组
 const btnGroup = ref([
-  { name: '概况', type: 'overview' },
-  { name: 'CPU数', type: 'cpu' },
-  { name: '内存', type: 'memory' },
-  { name: '磁盘', type: 'disk' },
-  { name: 'CDROM', type: 'cdrom' },
-  { name: '虚拟网络', type: 'network' },
-  { name: '显示协议', type: 'display' },
-  { name: '声卡', type: 'sound' },
-  { name: '控制台', type: 'console' },
-  { name: '通道', type: 'channel-qemu' },
-  { name: '通道', type: 'channel-spice' },
-  { name: '视频', type: 'video' },
-  { name: '控制器USB', type: 'controller-usb' },
-  { name: '控制器PCIe', type: 'controller-pcie' },
-  { name: 'USB转发器1', type: 'usb-redir1' },
-  { name: 'USB转发器2', type: 'usb-redir2' },
-  { name: 'RNG /dev/urandom', type: 'rng' },
+  {
+    cfg: {
+      name: 'ubuntu25.10',
+      uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
+      osMachine: 'pc',
+      osFirmware: 'bios',
+    },
+    name: '概况',
+    type: 'overview',
+  },
+  {
+    cfg: {
+      cpuCount: 2,
+      cpuMode: 'host-passthrough',
+      isNotManualTopology: false,
+      manualTopology: { sockets: 2, cores: 1, threads: 1 },
+    },
+    name: 'CPU数',
+    type: 'cpu',
+  },
+  { cfg: { memory: 4194304, currentMemory: 4194304 }, name: '内存', type: 'memory' },
+  {
+    cfg: {
+      diskType: 'disk',
+      sourcePath: '/var/lib/libvirt/images/ubuntu25.10.qcow2',
+      diskFormat: 'qcow2',
+      targetDev: 'vda',
+      targetBus: 'virtio',
+      isReadOnly: false,
+    },
+    name: '磁盘',
+    type: 'disk',
+  },
+  { cfg: {}, name: 'CDROM', type: 'cdrom' },
+  { cfg: {}, name: '虚拟网络', type: 'network' },
+  { cfg: {}, name: '显示协议', type: 'display' },
+  { cfg: {}, name: '声卡', type: 'sound' },
+  { cfg: {}, name: '控制台', type: 'console' },
+  { cfg: {}, name: '通道', type: 'channel-qemu' },
+  { cfg: {}, name: '通道', type: 'channel-spice' },
+  { cfg: {}, name: '视频', type: 'video' },
+  { cfg: {}, name: '控制器USB', type: 'controller-usb' },
+  { cfg: {}, name: '控制器PCIe', type: 'controller-pcie' },
+  { cfg: {}, name: 'USB转发器1', type: 'usb-redir1' },
+  { cfg: {}, name: 'USB转发器2', type: 'usb-redir2' },
+  { cfg: {}, name: 'RNG /dev/urandom', type: 'rng' },
 ])
+
+// 获取当前选中组件的配置
+const getCurrentCfg = () => {
+  const currentItem = btnGroup.value.find((item) => item.type === selectedMenu.value)
+  return currentItem ? currentItem.cfg : {}
+}
+
+// 更新组件配置
+const updateComponentCfg = (newCfg) => {
+  const currentIndex = btnGroup.value.findIndex((item) => item.type === selectedMenu.value)
+  if (currentIndex !== -1) {
+    btnGroup.value[currentIndex].cfg = newCfg
+  }
+}
 </script>
 
 <style scoped>
