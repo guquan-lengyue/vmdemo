@@ -23,6 +23,7 @@
         :hostMsg="hostMsg"
         :cfg="getCurrentCfg()"
         @update:cfg="updateComponentCfg"
+        @update:menuName="updateMenuName"
       />
     </div>
   </div>
@@ -60,20 +61,10 @@ const btnGroup = ref([
   { cfg: {}, name: '概况', type: 'overview' },
   { cfg: {}, name: 'CPU数', type: 'cpu' },
   { cfg: {}, name: '内存', type: 'memory' },
-  { cfg: {}, name: '磁盘', type: 'disk' },
-  { cfg: {}, name: 'CDROM', type: 'disk' },
+  { cfg: {}, name: 'VirtIO-磁盘', type: 'disk' },
+  { cfg: {}, name: 'VirtIO-磁盘', type: 'disk' },
   { cfg: {}, name: '虚拟网络', type: 'interface' },
-  { cfg: {}, name: '显示协议', type: 'display' },
-  { cfg: {}, name: '声卡', type: 'sound' },
-  { cfg: {}, name: '控制台', type: 'console' },
-  { cfg: {}, name: '通道', type: 'channel-qemu' },
-  { cfg: {}, name: '通道', type: 'channel-spice' },
-  { cfg: {}, name: '视频', type: 'video' },
-  { cfg: {}, name: '控制器USB', type: 'controller-usb' },
-  { cfg: {}, name: '控制器PCIe', type: 'controller-pcie' },
-  { cfg: {}, name: 'USB转发器1', type: 'usb-redir1' },
-  { cfg: {}, name: 'USB转发器2', type: 'usb-redir2' },
-  { cfg: {}, name: 'RNG /dev/urandom', type: 'rng' },
+  { cfg: {}, name: '显示协议-VNC', type: 'display' },
 ])
 
 // 跟踪当前选中的菜单项索引
@@ -98,6 +89,13 @@ const getCurrentCfg = () => {
 const updateComponentCfg = (newCfg) => {
   if (currentMenuIndex.value !== -1) {
     btnGroup.value[currentMenuIndex.value].cfg = newCfg
+  }
+}
+
+// 更新菜单名称
+const updateMenuName = (newName) => {
+  if (currentMenuIndex.value !== -1) {
+    btnGroup.value[currentMenuIndex.value].name = newName
   }
 }
 

@@ -6,8 +6,9 @@
       <div class="info-item">
         <span class="label">磁盘类型:</span>
         <select v-model="localCfg.diskType" class="select-field" @change="updateCfg">
-          <option value="disk">磁盘</option>
-          <option value="cdrom">光驱</option>
+          <option v-for="item in disKTypes" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </option>
         </select>
       </div>
       <div class="info-item">
@@ -42,10 +43,9 @@
       <div class="info-item">
         <span class="label">总线类型:</span>
         <select v-model="localCfg.targetBus" class="select-field" @change="updateCfg">
-          <option value="virtio">virtio</option>
-          <option value="sata">sata</option>
-          <option value="ide">ide</option>
-          <option value="scsi">scsi</option>
+          <option v-for="item in targetBusTypes" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </option>
         </select>
       </div>
       <div class="info-item" v-if="localCfg.diskType === 'cdrom'">
@@ -76,7 +76,7 @@ const props = defineProps({
 })
 
 // 定义事件
-const emit = defineEmits(['update:cfg'])
+const emit = defineEmits(['update:cfg', 'update:menuName'])
 
 // 本地配置副本
 const localCfg = ref({ ...props.cfg })
@@ -90,13 +90,30 @@ watch(
   { deep: true },
 )
 
+const disKTypes = [
+  { label: '磁盘', value: 'disk' },
+  { label: '光驱', value: 'cdrom' },
+]
+
+const targetBusTypes = [
+  { label: 'VirtIO', value: 'virtio' },
+  { label: 'SATA', value: 'sata' },
+  { label: 'IDE', value: 'ide' },
+  { label: 'SCSI', value: 'scsi' },
+]
+
 // 更新配置
 const updateCfg = () => {
   if (localCfg.value.diskType === 'cdrom') {
     localCfg.value.isReadOnly = true
     localCfg.value.diskFormat = 'raw'
   }
+  // 计算菜单名称：{总线类型}:{磁盘类型}
+  const targetBusLabel = targetBusTypes.find((i) => i.value === localCfg.value.targetBus)?.label
+  const diskTypeLabel = disKTypes.find((i) => i.value === localCfg.value.diskType)?.label
+  const menuName = `${targetBusLabel}-${diskTypeLabel}`
   emit('update:cfg', { ...localCfg.value })
+  emit('update:menuName', menuName)
 }
 
 // 生成磁盘配置的XML

@@ -6,8 +6,7 @@
       <div class="info-item">
         <span class="label">显示类型:</span>
         <select v-model="localCfg.type" class="select-field" @change="updateCfg">
-          <option value="vnc">VNC</option>
-          <option value="spice">SPICE</option>
+          <option v-for="(v, k) in displayTypes" :key="k" :value="k">{{ v }}</option>
         </select>
       </div>
       <div class="info-item">
@@ -31,13 +30,13 @@
           @input="updateCfg"
         />
       </div>
-      <div v-if="localCfg.type === 'vnc'" class="info-item">
+      <div class="info-item">
         <span class="label">密码:</span>
         <input
           type="password"
           v-model="localCfg.passwd"
           class="input-field"
-          placeholder="设置VNC密码"
+          placeholder="设置密码"
           @input="updateCfg"
         />
       </div>
@@ -71,7 +70,7 @@ const props = defineProps({
 })
 
 // 定义事件
-const emit = defineEmits(['update:cfg'])
+const emit = defineEmits(['update:cfg', 'update:menuName'])
 
 // 本地配置副本
 const localCfg = ref({ ...props.cfg })
@@ -85,14 +84,22 @@ watch(
   { deep: true },
 )
 
+const displayTypes = {
+  vnc: 'VNC',
+  spice: 'SPICE',
+}
+
 // 更新配置
 const updateCfg = () => {
+  // 计算菜单名称：显示协议:{显示类型}
+  const menuName = `显示协议-${displayTypes[localCfg.value.type]}`
   emit('update:cfg', { ...localCfg.value })
+  emit('update:menuName', menuName)
 }
 
 const xml = computed(() => {
   return `
-<graphics type="${localCfg.value.type}" port="${localCfg.value.port}" listen="${localCfg.value.listen}">
+<graphics type="${localCfg.value.type}" port="${localCfg.value.port}" listen="${localCfg.value.listen}" password="${localCfg.value.passwd}">
   <gl enable="no"/>
   <image compression="${localCfg.value.imageCompression}"/>
 </graphics>

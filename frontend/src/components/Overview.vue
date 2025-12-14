@@ -128,16 +128,8 @@ const bootableComponents = computed(() => {
   })
 })
 
-// 获取设备显示标签
+// 获取设备显示标签 - 使用菜单中的名称
 const getDeviceLabel = (item, cfg) => {
-  if (item.type === 'disk') {
-    if (cfg.diskType === 'cdrom') {
-      return 'CD-ROM'
-    }
-    return `磁盘 ${cfg.targetDev || 'vda'}`
-  } else if (item.type === 'interface') {
-    return `网络 ${cfg.targetDevice || 'vnet0'}`
-  }
   return item.name
 }
 
