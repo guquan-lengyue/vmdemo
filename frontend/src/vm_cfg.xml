@@ -76,7 +76,7 @@
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
     </channel>
-    <graphics type="vnc" port="-1" tlsPort="-1" autoport="yes">
+    <graphics type="vnc" port="-1" tlsPort="-1" autoport="yes" listen="0.0.0.0" passwd="123456">
       <image compression="off"/>
     </graphics>
     <sound model="ich9"/>

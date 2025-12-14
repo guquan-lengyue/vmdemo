@@ -35,6 +35,7 @@ import CPU from './components/CPU.vue'
 import Memory from './components/Memery.vue'
 import Disk from './components/Disk.vue'
 import Interface from './components/Interface.vue'
+import Display from './components/Display.vue'
 
 const selectedMenu = ref('overview')
 
@@ -45,6 +46,7 @@ const componentMap = {
   memory: Memory,
   disk: Disk,
   interface: Interface,
+  display: Display,
 }
 
 // 主机信息
