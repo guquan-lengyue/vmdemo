@@ -29,11 +29,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, provide } from 'vue'
 import Overview from './components/Overview.vue'
 import CPU from './components/CPU.vue'
 import Memory from './components/Memery.vue'
 import Disk from './components/Disk.vue'
+import Interface from './components/Interface.vue'
 
 const selectedMenu = ref('overview')
 
@@ -43,6 +44,7 @@ const componentMap = {
   cpu: CPU,
   memory: Memory,
   disk: Disk,
+  interface: Interface,
 }
 
 // 主机信息
@@ -58,7 +60,7 @@ const btnGroup = ref([
   { cfg: {}, name: '内存', type: 'memory' },
   { cfg: {}, name: '磁盘', type: 'disk' },
   { cfg: {}, name: 'CDROM', type: 'disk' },
-  { cfg: {}, name: '虚拟网络', type: 'network' },
+  { cfg: {}, name: '虚拟网络', type: 'interface' },
   { cfg: {}, name: '显示协议', type: 'display' },
   { cfg: {}, name: '声卡', type: 'sound' },
   { cfg: {}, name: '控制台', type: 'console' },
@@ -86,6 +88,9 @@ const updateComponentCfg = (newCfg) => {
     btnGroup.value[currentIndex].cfg = newCfg
   }
 }
+
+// 将btnGroup提供给子组件
+provide('btnGroup', btnGroup.value)
 </script>
 
 <style scoped>

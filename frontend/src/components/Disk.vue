@@ -70,6 +70,7 @@ const props = defineProps({
       targetDev: 'vda',
       targetBus: 'virtio',
       isReadOnly: false,
+      bootOrder: 0,
     }),
   },
 })
@@ -108,6 +109,7 @@ const xml = computed(() => {
   <source file="${localCfg.value.sourcePath}"/>
   <target dev="${localCfg.value.targetDev}" bus="${localCfg.value.targetBus}"/>
   ${readonlyTag}
+  <boot order="${localCfg.value.bootOrder}"/>
 </disk>
 `
 })
