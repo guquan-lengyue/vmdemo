@@ -149,19 +149,6 @@ watch(
   },
   { deep: true },
 )
-
-const xml = computed(() => {
-  let topology = ''
-  if (!localCfg.value.isNotManualTopology) {
-    topology = `<topology sockets="${localCfg.value.manualTopology.sockets}" cores="${localCfg.value.manualTopology.cores}" threads="${localCfg.value.manualTopology.threads}"/>`
-  }
-  return `
-<vcpu current="6">${localCfg.value.cpuCount}</vcpu>
-<cpu mode="${localCfg.value.cpuMode}">
-  ${topology}
-</cpu>
-`
-})
 </script>
 
 <style scoped>

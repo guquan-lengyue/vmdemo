@@ -83,20 +83,6 @@ watch(
 const updateCfg = () => {
   emit('update:cfg', { ...localCfg.value })
 }
-
-const xml = computed(() => {
-  let model = ''
-  if (localCfg.value.model === 'default') {
-    model = `<model type="${localCfg.value.model}"/>`
-  }
-  return `
-<interface type="${localCfg.value.networkType}">
-  <source network="${localCfg.value.networkType === 'bridge' ? localCfg.value.bridgeName : localCfg.value.sourceDevice}"/>
-  <mac address="${localCfg.value.macAddress}"/>
-  <model type="${localCfg.value.model}"/>
-</interface>
-`
-})
 </script>
 
 <style scoped>

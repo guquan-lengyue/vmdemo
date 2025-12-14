@@ -96,15 +96,6 @@ const updateCfg = () => {
   emit('update:cfg', { ...localCfg.value })
   emit('update:menuName', menuName)
 }
-
-const xml = computed(() => {
-  return `
-<graphics type="${localCfg.value.type}" port="${localCfg.value.port}" listen="${localCfg.value.listen}" password="${localCfg.value.passwd}">
-  <gl enable="no"/>
-  <image compression="${localCfg.value.imageCompression}"/>
-</graphics>
-  `
-})
 </script>
 
 <style scoped>

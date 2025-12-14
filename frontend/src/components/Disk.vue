@@ -115,21 +115,6 @@ const updateCfg = () => {
   emit('update:cfg', { ...localCfg.value })
   emit('update:menuName', menuName)
 }
-
-// 生成磁盘配置的XML
-const xml = computed(() => {
-  const readonlyTag =
-    localCfg.value.isReadOnly && localCfg.value.diskType === 'cdrom' ? '<readonly/>' : ''
-  return `
-<disk type="file" device="${localCfg.value.diskType}">
-  <driver name="qemu" type="${localCfg.value.diskFormat}" discard="unmap"/>
-  <source file="${localCfg.value.sourcePath}"/>
-  <target dev="${localCfg.value.targetDev}" bus="${localCfg.value.targetBus}"/>
-  ${readonlyTag}
-  <boot order="${localCfg.value.bootOrder}"/>
-</disk>
-`
-})
 </script>
 
 <style scoped>

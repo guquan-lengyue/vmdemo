@@ -202,27 +202,6 @@ const moveDown = (index) => {
   if (index >= bootableComponents.value.length - 1) return
   reorderBootDevices(index, index + 1)
 }
-
-// 计算xml
-const xml = computed(() => {
-  return `
-<name>${localCfg.value.name}</name>
-<uuid>${localCfg.value.uuid}</uuid>
-<metadata>
-  <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
-    <libosinfo:os id="http://ubuntu.com/ubuntu/25.10"/>
-  </libosinfo:libosinfo>
-</metadata>
-<os firmware="${localCfg.value.osFirmware}">
-  <type arch="x86_64" machine="${localCfg.value.osMachine}">hvm</type>
-</os>
-<features>
-  <acpi/>
-  <apic/>
-  <vmport state="off"/>
-</features>
-`
-})
 </script>
 
 <style scoped>
