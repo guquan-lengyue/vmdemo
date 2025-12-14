@@ -65,7 +65,7 @@ const props = defineProps({
     type: Object,
     default: () => ({
       diskType: 'disk',
-      sourcePath: '/var/lib/libvirt/images/ubuntu25.10.qcow2',
+      sourcePath: '',
       diskFormat: 'qcow2',
       targetDev: 'vda',
       targetBus: 'virtio',
@@ -91,6 +91,10 @@ watch(
 
 // 更新配置
 const updateCfg = () => {
+  if (localCfg.value.diskType === 'cdrom') {
+    localCfg.value.isReadOnly = true
+    localCfg.value.diskFormat = 'raw'
+  }
   emit('update:cfg', { ...localCfg.value })
 }
 

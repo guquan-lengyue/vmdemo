@@ -57,7 +57,7 @@ const btnGroup = ref([
   { cfg: {}, name: 'CPU数', type: 'cpu' },
   { cfg: {}, name: '内存', type: 'memory' },
   { cfg: {}, name: '磁盘', type: 'disk' },
-  { cfg: {}, name: 'CDROM', type: 'cdrom' },
+  { cfg: {}, name: 'CDROM', type: 'disk' },
   { cfg: {}, name: '虚拟网络', type: 'network' },
   { cfg: {}, name: '显示协议', type: 'display' },
   { cfg: {}, name: '声卡', type: 'sound' },
