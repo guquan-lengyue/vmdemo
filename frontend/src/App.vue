@@ -10,7 +10,7 @@
           v-for="(item, index) in btnGroup"
           :key="index"
           class="menu-item"
-          @click="selectedMenu = item.type"
+          @click="handleMenuClick(item, index)"
         >
           <span class="menu-icon"></span>
           <span class="menu-text">{{ item.name }}</span>
@@ -74,18 +74,28 @@ const btnGroup = ref([
   { cfg: {}, name: 'RNG /dev/urandom', type: 'rng' },
 ])
 
+// 跟踪当前选中的菜单项索引
+const currentMenuIndex = ref(-1)
+
+// 菜单点击事件处理
+const handleMenuClick = (item, index) => {
+  selectedMenu.value = item.type
+  currentMenuIndex.value = index
+}
+
 // 获取当前选中组件的配置
 const getCurrentCfg = () => {
-  const currentItem = btnGroup.value.find((item) => item.type === selectedMenu.value)
+  if (currentMenuIndex.value === -1) return undefined
+
+  const currentItem = btnGroup.value[currentMenuIndex.value]
   // 如果cfg为空对象，返回undefined，这样组件会使用自身的默认值
   return currentItem && Object.keys(currentItem.cfg).length > 0 ? currentItem.cfg : undefined
 }
 
 // 更新组件配置
 const updateComponentCfg = (newCfg) => {
-  const currentIndex = btnGroup.value.findIndex((item) => item.type === selectedMenu.value)
-  if (currentIndex !== -1) {
-    btnGroup.value[currentIndex].cfg = newCfg
+  if (currentMenuIndex.value !== -1) {
+    btnGroup.value[currentMenuIndex.value].cfg = newCfg
   }
 }
 

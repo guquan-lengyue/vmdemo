@@ -187,8 +187,8 @@ const reorderBootDevices = (fromIndex, toIndex) => {
   currentOrder.forEach((device, index) => {
     const bootOrder = index + 1
 
-    // 找到对应的btnGroup项并更新bootOrder
-    const btnGroupItem = btnGroup.find((item, idx) => `${item.type}-${idx}` === device.id)
+    // 使用设备的originalIndex来精确找到对应的btnGroup项
+    const btnGroupItem = btnGroup[device.originalIndex]
 
     if (btnGroupItem && btnGroupItem.cfg) {
       btnGroupItem.cfg.bootOrder = bootOrder
