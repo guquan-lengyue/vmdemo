@@ -5,7 +5,13 @@
     <div class="cpu-info">
       <div class="info-item">
         <span class="label">CPU数量:</span>
-        <input type="number" v-model="cpuCount" min="1" max="16" class="input-field" />
+        <input
+          :disabled="isNotManualTopology"
+          type="number"
+          v-model="cpuCount"
+          min="1"
+          class="input-field"
+        />
       </div>
       <div class="info-item">
         <span class="label">CPU模式:</span>
@@ -16,19 +22,41 @@
         </select>
       </div>
       <div class="info-item">
+        <span class="label">手动拓扑:</span>
+        <input type="checkbox" v-model="isNotManualTopology" class="checkbox" />
+      </div>
+      <div class="info-item">
         <span class="label">CPU拓扑:</span>
         <div class="topology">
           <div class="topology-item">
             <span> sockets: </span>
-            <input type="number" v-model="sockets" min="1" class="small-input" />
+            <input
+              :disabled="!isNotManualTopology"
+              type="number"
+              v-model="manualTopology.sockets"
+              min="1"
+              class="small-input"
+            />
           </div>
           <div class="topology-item">
             <span> cores: </span>
-            <input type="number" v-model="cores" min="1" class="small-input" />
+            <input
+              :disabled="!isNotManualTopology"
+              type="number"
+              v-model="manualTopology.cores"
+              min="1"
+              class="small-input"
+            />
           </div>
           <div class="topology-item">
             <span> threads: </span>
-            <input type="number" v-model="threads" min="1" class="small-input" />
+            <input
+              :disabled="!isNotManualTopology"
+              type="number"
+              v-model="manualTopology.threads"
+              min="1"
+              class="small-input"
+            />
           </div>
         </div>
       </div>
@@ -37,19 +65,48 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const cpuCount = ref(2)
 const cpuMode = ref('host-passthrough')
-const sockets = ref(1)
-const cores = ref(2)
-const threads = ref(1)
+const manualTopology = ref({
+  sockets: 2,
+  cores: 1,
+  threads: 1,
+})
+const isNotManualTopology = ref(false)
+
+watch(cpuCount, (newVal) => {
+  if (isNotManualTopology.value) {
+    return
+  }
+  manualTopology.value = {
+    sockets: newVal,
+    cores: 1,
+    threads: 1,
+  }
+})
+
+watch(
+  manualTopology,
+  (newVal) => {
+    if (!isNotManualTopology.value) {
+      return
+    }
+    cpuCount.value = newVal.sockets * newVal.cores * newVal.threads
+  },
+  { deep: true },
+)
 
 const xml = computed(() => {
+  let topology = ''
+  if (!isNotManualTopology.value) {
+    topology = `<topology sockets="${manualTopology.value.sockets}" cores="${manualTopology.value.cores}" threads="${manualTopology.value.threads}"/>`
+  }
   return `
 <vcpu current="6">${cpuCount.value}</vcpu>
 <cpu mode="${cpuMode.value}">
-  <topology sockets="${sockets.value}" cores="${cores.value}" threads="${threads.value}"/>
+  ${topology}
 </cpu>
 `
 })
@@ -105,6 +162,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: black;
 }
 
 .small-input {
