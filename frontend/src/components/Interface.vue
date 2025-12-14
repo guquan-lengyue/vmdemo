@@ -1,43 +1,24 @@
-<!-- 虚拟网络 -->
+<!-- 网络接口设置 -->
 <template>
   <div class="vm-interface">
-    <h2>网络设置</h2>
+    <h2>网络接口设置</h2>
     <div class="interface-info">
       <div class="info-item">
         <span class="label">网络类型:</span>
         <select v-model="localCfg.networkType" class="select-field" @change="updateCfg">
-          <option value="bridge">桥接</option>
-          <option value="nat">NAT</option>
-          <option value="internal">内部网络</option>
-          <option value="isolated">隔离网络</option>
+          <option v-for="source in props.sources" :key="source" :value="source">
+            {{ source }}
+          </option>
+          <option value="bridge">桥接模式</option>
         </select>
       </div>
-      <div class="info-item">
-        <span class="label">源设备:</span>
+      <div v-if="localCfg.networkType === 'bridge'" class="info-item">
+        <span class="label">桥接设备名称:</span>
         <input
           type="text"
-          v-model="localCfg.sourceDevice"
+          v-model="localCfg.bridgeName"
           class="input-field"
-          placeholder="eth0"
-          @input="updateCfg"
-        />
-      </div>
-      <div class="info-item">
-        <span class="label">网络模型:</span>
-        <select v-model="localCfg.networkModel" class="select-field" @change="updateCfg">
-          <option value="virtio">virtio</option>
-          <option value="e1000">e1000</option>
-          <option value="rtl8139">rtl8139</option>
-          <option value="ne2k_pci">ne2k_pci</option>
-        </select>
-      </div>
-      <div class="info-item">
-        <span class="label">目标设备:</span>
-        <input
-          type="text"
-          v-model="localCfg.targetDevice"
-          class="small-input"
-          placeholder="vnet0"
+          placeholder="例如: br0"
           @input="updateCfg"
         />
       </div>
@@ -51,25 +32,35 @@
           @input="updateCfg"
         />
       </div>
+      <div class="info-item">
+        <span class="label">设备型号:</span>
+        <select v-model="localCfg.model" class="select-field" @change="updateCfg">
+          <option value="virtio">virtio</option>
+          <option value="e1000">e1000</option>
+          <option value="default">虚拟机管理默认</option>
+        </select>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
-// 接收父组件传递的配置
+// 接收父组件传递的配置和参数
 const props = defineProps({
   cfg: {
     type: Object,
     default: () => ({
       networkType: 'bridge',
-      sourceDevice: 'eth0',
-      networkModel: 'virtio',
-      targetDevice: 'vnet0',
+      bridgeName: '',
       macAddress: '',
-      bootOrder: 0,
+      model: 'virtio',
     }),
+  },
+  sources: {
+    type: Array,
+    default: () => ['default'],
   },
 })
 
@@ -92,56 +83,54 @@ watch(
 const updateCfg = () => {
   emit('update:cfg', { ...localCfg.value })
 }
+
+const xml = computed(() => {
+  let model = ''
+  if (localCfg.value.model === 'default') {
+    model = `<model type="${localCfg.value.model}"/>`
+  }
+  return `
+<interface type="${localCfg.value.networkType}">
+  <source network="${localCfg.value.networkType === 'bridge' ? localCfg.value.bridgeName : localCfg.value.sourceDevice}"/>
+  <mac address="${localCfg.value.macAddress}"/>
+  <model type="${localCfg.value.model}"/>
+</interface>
+`
+})
 </script>
 
 <style scoped>
 .vm-interface {
-  padding: 1rem;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-h2 {
-  margin-top: 0;
-  color: #333;
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
 }
 
 .interface-info {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 15px;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 10px;
 }
 
 .label {
-  width: 120px;
-  font-weight: bold;
-  color: #555;
-}
-
-.input-field,
-.select-field {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.small-input {
+  color: #333;
   width: 150px;
-  padding: 0.5rem;
+  font-weight: 500;
+}
+
+.select-field,
+.input-field {
+  flex: 1;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
 }
 
 .checkbox {
