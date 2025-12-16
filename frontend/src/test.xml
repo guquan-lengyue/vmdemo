@@ -1,0 +1,98 @@
+<domain type="kvm">
+
+    <name>ubuntu25.10</name>
+    <uuid>f0715790-cde5-4faf-8869-d8d72dfaf7d8</uuid>
+    <metadata>
+        <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+            <libosinfo:os id="http://ubuntu.com/ubuntu/25.10" />
+        </libosinfo:libosinfo>
+    </metadata>
+    <os>
+        <type arch="x86_64" machine="q35">hvm</type>
+    </os>
+    <features>
+        <acpi />
+        <apic />
+        <vmport state="off" />
+    </features>
+    <clock offset="utc">
+        <timer name="rtc" tickpolicy="catchup" />
+        <timer name="pit" tickpolicy="delay" />
+        <timer name="hpet" present="no" />
+    </clock>
+
+
+    <vcpu current="2">2</vcpu>
+    <cpu mode="host-passthrough">
+        <topology sockets="2" cores="1" threads="1" />
+    </cpu>
+
+
+    <memory>4096</memory>
+    <currentMemory>4096</currentMemory>
+
+    <pm>
+        <suspend-to-mem enabled="no" />
+        <suspend-to-disk enabled="no" />
+    </pm>
+    <devices>
+        <emulator>/usr/bin/qemu-system-x86_64</emulator>
+
+        <disk type="file" device="disk">
+            <driver name="qemu" type="qcow2" discard="unmap" />
+            <source file="/var/lib/libvirt/images/ubuntu25.10-1.qcow2" />
+            <target dev="vda" bus="virtio" />
+
+            <boot order="1" />
+        </disk>
+
+        <controller type="usb" model="qemu-xhci" ports="15" />
+        <controller type="pci" model="pcie-root" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="pci" model="pcie-root-port" />
+        <controller type="scsi" index="0" model="virtio-scsi" />
+
+        <interface type="network">
+            <source network="default" />
+            <mac address="52:54:00:b5:b3:e7" />
+
+            <boot order="2" />
+        </interface>
+
+        <console type="pty" />
+        <channel type="unix">
+            <source mode="bind" />
+            <target type="virtio" name="org.qemu.guest_agent.0" />
+        </channel>
+
+        <graphics type="vnc" port="-1" listen="0.0.0.0" password="">
+            <gl enable="no" />
+            <image compression="off" />
+        </graphics>
+
+        <sound model="ac97" />
+
+        <video>
+            <model type="virtio">
+                <acceleration accel3d="yes" />
+            </model>
+        </video>
+
+        <memballoon model="virtio" />
+        <rng model="virtio">
+            <backend model="random">/dev/urandom</backend>
+        </rng>
+    </devices>
+</domain>
