@@ -1,16 +1,14 @@
 <!-- 声音设置 -->
 <template>
-  <div class="vm-sound">
-    <h2>声音设置</h2>
-    <div class="sound-info">
-      <div class="info-item">
-        <span class="label">音频设备:</span>
-        <select v-model="localCfg.model" class="select-field" @change="updateCfg">
-          <option value="ac97">AC97</option>
-          <option value="ich6">HDA(ICH6)</option>
-          <option value="ich9">HDA(ICH9)</option>
-        </select>
-      </div>
+  <div class="sound-info">
+    <h2 style="color: #333">声音设置</h2>
+    <div class="info-item">
+      <span class="label">音频设备:</span>
+      <select v-model="localCfg.model" class="select-field" @change="updateCfg">
+        <option value="ac97">AC97</option>
+        <option value="ich6">HDA(ICH6)</option>
+        <option value="ich9">HDA(ICH9)</option>
+      </select>
     </div>
   </div>
 </template>
@@ -47,10 +45,6 @@ watch(
 const updateCfg = () => {
   emit('update:cfg', { ...localCfg.value })
 }
-
-const xml = computed(() => {
-  return `<sound model="${localCfg.value.model}"/>`
-})
 </script>
 
 <style scoped>

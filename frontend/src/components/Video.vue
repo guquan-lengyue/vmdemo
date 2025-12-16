@@ -1,30 +1,28 @@
 <!-- 视频设置 -->
 <template>
-  <div class="vm-video">
-    <h2>视频设置</h2>
-    <div class="video-info">
-      <div class="info-item">
-        <span class="label">视频设备:</span>
-        <select v-model="localCfg.model.type" class="select-field" @change="updateCfg">
-          <option value="virtio">VirtIO</option>
-          <option value="vga">VGA</option>
-          <option value="ramfb">Ramfb</option>
-          <option value="qxl">QXL</option>
-          <option value="bochs">Bochs</option>
-          <option value="none">None</option>
-        </select>
-      </div>
-      <div class="info-item" v-if="localCfg.model.type === 'virtio'">
-        <span class="label">3D加速:</span>
-        <select
-          v-model="localCfg.model.acceleration.accel3d"
-          class="select-field"
-          @change="updateCfg"
-        >
-          <option value="yes">开启</option>
-          <option value="no">关闭</option>
-        </select>
-      </div>
+  <div class="video-info">
+    <h2 style="color: #333">视频设置</h2>
+    <div class="info-item">
+      <span class="label">视频设备:</span>
+      <select v-model="localCfg.model.type" class="select-field" @change="updateCfg">
+        <option value="virtio">VirtIO</option>
+        <option value="vga">VGA</option>
+        <option value="ramfb">Ramfb</option>
+        <option value="qxl">QXL</option>
+        <option value="bochs">Bochs</option>
+        <option value="none">None</option>
+      </select>
+    </div>
+    <div class="info-item" v-if="localCfg.model.type === 'virtio'">
+      <span class="label">3D加速:</span>
+      <select
+        v-model="localCfg.model.acceleration.accel3d"
+        class="select-field"
+        @change="updateCfg"
+      >
+        <option value="yes">开启</option>
+        <option value="no">关闭</option>
+      </select>
     </div>
   </div>
 </template>
@@ -70,23 +68,6 @@ const updateCfg = () => {
   }
   emit('update:cfg', { ...localCfg.value })
 }
-
-const xml = computed(() => {
-  let accel3d = ''
-  if (
-    localCfg.value.model.acceleration.accel3d === 'yes' &&
-    localCfg.value.model.type === 'virtio'
-  ) {
-    accel3d = `<acceleration accel3d="${localCfg.value.model.acceleration.accel3d}"/>`
-  }
-  return `
-<video>
-  <model type="${localCfg.value.model.type}">
-    ${accel3d}
-  </model>
-</video>
-  `
-})
 </script>
 
 <style scoped>
@@ -110,6 +91,7 @@ const xml = computed(() => {
 }
 
 .label {
+  color: #333;
   width: 120px;
   font-weight: 500;
 }

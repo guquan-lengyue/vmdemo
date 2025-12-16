@@ -3,28 +3,16 @@
  * @param {*} cfg
  * @returns
  */
-function cpuXml(cfg) {
+function cpuXml({ cfg }) {
   let topology = ''
-  if (!localCfg.isNotManualTopology) {
-    topology = `<topology sockets="${localCfg.manualTopology.sockets}" cores="${localCfg.manualTopology.cores}" threads="${localCfg.manualTopology.threads}"/>`
+  if (!cfg.isNotManualTopology) {
+    topology = `<topology sockets="${cfg.manualTopology.sockets}" cores="${cfg.manualTopology.cores}" threads="${cfg.manualTopology.threads}"/>`
   }
   return `
-<vcpu current="${localCfg.cpuCount}">${localCfg.cpuCount}</vcpu>
-<cpu mode="${localCfg.cpuMode}">
+<vcpu current="${cfg.cpuCount}">${cfg.cpuCount}</vcpu>
+<cpu mode="${cfg.cpuMode}">
   ${topology}
 </cpu>
-`
-}
-
-/**
- * 生成内存配置的XML
- * @param {*} cfg
- * @returns
- */
-function memoryXml(cfg) {
-  return `
-  <memory>${cfg.memory}</memory>
-  <currentMemory>${cfg.currentMemory}</currentMemory>
 `
 }
 
@@ -33,7 +21,7 @@ function memoryXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function diskXml(cfg) {
+function diskXml({ cfg }) {
   const readonlyTag = cfg.isReadOnly && cfg.diskType === 'cdrom' ? '<readonly/>' : ''
   return `
 <disk type="file" device="${cfg.diskType}">
@@ -41,7 +29,7 @@ function diskXml(cfg) {
   <source file="${cfg.sourcePath}"/>
   <target dev="${cfg.targetDev}" bus="${cfg.targetBus}"/>
   ${readonlyTag}
-  <boot order="${cfg.bootOrder}"/>
+  <boot order="${cfg.bootOrder || 0 + 1}"/>
 </disk>
 `
 }
@@ -50,7 +38,7 @@ function diskXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function displayXml(cfg) {
+function displayXml({ cfg }) {
   return `
 <graphics type="${cfg.type}" port="${cfg.port}" listen="${cfg.listen}" password="${cfg.passwd}">
   <gl enable="no"/>
@@ -64,17 +52,17 @@ function displayXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function interfaceXml(cfg) {
+function interfaceXml({ cfg }) {
   let model = ''
   if (cfg.model === 'default') {
     model = `<model type="${cfg.model}"/>`
   }
   return `
 <interface type="${cfg.networkType}">
-  <source network="${cfg.networkType === 'bridge' ? cfg.bridgeName : cfg.sourceDevice}"/>
+  <source network="${cfg.networkType === 'bridge' ? cfg.bridgeName : cfg.netName}"/>
   <mac address="${cfg.macAddress}"/>
   ${model}
-  <boot order="${cfg.bootOrder}"/>
+  <boot order="${cfg.bootOrder || 0 + 1}"/>
 </interface>
 `
 }
@@ -84,7 +72,7 @@ function interfaceXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function memoryXml(cfg) {
+function memoryXml({ cfg }) {
   return `
   <memory>${cfg.memory}</memory>
   <currentMemory>${cfg.currentMemory}</currentMemory>
@@ -96,7 +84,11 @@ function memoryXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function overviewXml(cfg) {
+function overviewXml({ cfg }) {
+  let osFirmwareTag = ''
+  if (cfg.osFirmware === 'efi') {
+    osFirmwareTag = `firmware="${cfg.osFirmware}"`
+  }
   return `
 <name>${cfg.name}</name>
 <uuid>${cfg.uuid}</uuid>
@@ -105,7 +97,7 @@ function overviewXml(cfg) {
     <libosinfo:os id="http://ubuntu.com/ubuntu/25.10"/>
   </libosinfo:libosinfo>
 </metadata>
-<os firmware="${cfg.osFirmware}">
+<os ${osFirmwareTag}>
   <type arch="x86_64" machine="${cfg.osMachine}">hvm</type>
 </os>
 <features>
@@ -126,8 +118,8 @@ function overviewXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function soundXml(cfg) {
-  return `<sound model="${localCfg.value.model}"/>`
+function soundXml({ cfg }) {
+  return `<sound model="${cfg.model}"/>`
 }
 
 /**
@@ -135,7 +127,7 @@ function soundXml(cfg) {
  * @param {*} cfg
  * @returns
  */
-function videoXml(cfg) {
+function videoXml({ cfg }) {
   let accel3d = ''
   if (cfg.model.acceleration.accel3d === 'yes' && cfg.model.type === 'virtio') {
     accel3d = `<acceleration accel3d="${cfg.model.acceleration.accel3d}"/>`
@@ -215,20 +207,16 @@ function xml(cfg_list) {
     <controller type="pci" model="pcie-root-port"/>
     <controller type="pci" model="pcie-root-port"/>
     <controller type="pci" model="pcie-root-port"/>
+    <controller type="scsi" index="0" model="virtio-scsi"/>
     ${interfaceXmls}
     <console type="pty"/>
     <channel type="unix">
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
-    <channel type="spicevmc">
-      <target type="virtio" name="com.redhat.spice.0"/>
-    </channel>
     ${displayXmls}
     ${soundXmls}
     ${videoXmls}
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>

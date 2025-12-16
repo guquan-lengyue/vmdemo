@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, inject } from 'vue'
+import { computed, ref, watch, inject, onMounted } from 'vue'
 
 // 接收父组件传递的配置
 const props = defineProps({
@@ -78,7 +78,7 @@ const props = defineProps({
     default: () => ({
       name: 'ubuntu25.10',
       uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
-      osMachine: 'pc',
+      osMachine: 'q35',
       osFirmware: 'bios',
     }),
   },
@@ -144,6 +144,7 @@ watch(
 
 // 更新配置
 const updateCfg = () => {
+  console.log('更新配置', localCfg.value)
   emit('update:cfg', { ...localCfg.value })
 }
 
@@ -202,6 +203,34 @@ const moveDown = (index) => {
   if (index >= bootableComponents.value.length - 1) return
   reorderBootDevices(index, index + 1)
 }
+
+// 初始化启动顺序
+const initBootOrder = () => {
+  if (!btnGroup) return
+
+  // 获取当前排序的设备列表
+  const currentOrder = [...bootableComponents.value]
+
+  // 为所有设备分配bootOrder值
+  currentOrder.forEach((device, index) => {
+    const bootOrder = index + 1
+
+    // 使用设备的originalIndex来精确找到对应的btnGroup项
+    const btnGroupItem = btnGroup[device.originalIndex]
+
+    if (btnGroupItem && btnGroupItem.cfg) {
+      btnGroupItem.cfg.bootOrder = bootOrder
+    }
+  })
+
+  // 触发配置更新
+  updateCfg()
+}
+
+// 组件挂载后初始化启动顺序
+onMounted(() => {
+  initBootOrder()
+})
 </script>
 
 <style scoped>

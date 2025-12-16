@@ -2,7 +2,7 @@
   <div class="vm-cfg-container">
     <div class="vm-cfg">
       <div class="menu-header">
-        <button class="install-btn">开始安装</button>
+        <button class="install-btn" @click="handleInstall">开始安装</button>
         <button class="cancel-btn">取消安装</button>
       </div>
       <div class="menu-list">
@@ -39,6 +39,7 @@ import Interface from './components/Interface.vue'
 import Display from './components/Display.vue'
 import Sound from './components/Sound.vue'
 import Video from './components/Video.vue'
+import { xml } from './utils/xml'
 
 const selectedMenu = ref('overview')
 
@@ -58,19 +59,97 @@ const componentMap = {
 const hostMsg = ref({
   hostCpuCount: 16,
   hostMemory: 4096,
+  netNames: ['default'], //  虚拟网卡源列表
 })
 
 // 使用ref定义按钮组 - 清空所有组件的默认cfg配置
 const btnGroup = ref([
-  { cfg: {}, name: '概况', type: 'overview' },
-  { cfg: {}, name: 'CPU数', type: 'cpu' },
-  { cfg: {}, name: '内存', type: 'memory' },
-  { cfg: {}, name: 'VirtIO-磁盘', type: 'disk' },
-  { cfg: {}, name: 'VirtIO-磁盘', type: 'disk' },
-  { cfg: {}, name: '虚拟网络', type: 'interface' },
-  { cfg: {}, name: '显示协议-VNC', type: 'display' },
-  { cfg: {}, name: '声音', type: 'sound' },
-  { cfg: {}, name: '视频', type: 'video' },
+  {
+    cfg: {
+      name: 'ubuntu25.10',
+      uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
+      osMachine: 'q35',
+      osFirmware: 'bios',
+    },
+    name: '概况',
+    type: 'overview',
+  },
+  {
+    cfg: {
+      cpuCount: 2,
+      cpuMode: 'host-passthrough',
+      isNotManualTopology: false,
+      manualTopology: {
+        sockets: 2,
+        cores: 1,
+        threads: 1,
+      },
+    },
+    name: 'CPU数',
+    type: 'cpu',
+  },
+  {
+    cfg: {
+      memory: 4096,
+      currentMemory: 4096,
+    },
+    name: '内存',
+    type: 'memory',
+  },
+  {
+    cfg: {
+      diskType: 'disk',
+      sourcePath: '/var/lib/libvirt/images/ubuntu25.10-1.qcow2',
+      diskFormat: 'qcow2',
+      targetDev: 'vda',
+      targetBus: 'virtio',
+      isReadOnly: false,
+      bootOrder: 0,
+    },
+    name: 'VirtIO-磁盘',
+    type: 'disk',
+  },
+  {
+    cfg: {
+      networkType: 'network',
+      netName: 'default',
+      bridgeName: '',
+      macAddress: '52:54:00:b5:b3:e7',
+      model: 'virtio',
+    },
+    name: '虚拟网络',
+    type: 'interface',
+  },
+  {
+    cfg: {
+      type: 'vnc',
+      port: '-1',
+      listen: '0.0.0.0',
+      passwd: '',
+      imageCompression: 'off',
+    },
+    name: '显示协议-VNC',
+    type: 'display',
+  },
+  {
+    cfg: {
+      model: 'ac97',
+    },
+    name: '声音',
+    type: 'sound',
+  },
+  {
+    cfg: {
+      model: {
+        type: 'virtio',
+        acceleration: {
+          accel3d: 'yes',
+        },
+      },
+    },
+    name: '视频',
+    type: 'video',
+  },
 ])
 
 // 跟踪当前选中的菜单项索引
@@ -107,6 +186,11 @@ const updateMenuName = (newName) => {
 
 // 将btnGroup提供给子组件
 provide('btnGroup', btnGroup.value)
+
+function handleInstall() {
+  const xmlStr = xml(btnGroup.value)
+  console.log(xmlStr)
+}
 </script>
 
 <style scoped>

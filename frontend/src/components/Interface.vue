@@ -1,15 +1,22 @@
 <!-- 网络接口设置 -->
 <template>
   <div class="vm-interface">
-    <h2>网络接口设置</h2>
+    <h2 style="color: #333">网络接口设置</h2>
     <div class="interface-info">
       <div class="info-item">
         <span class="label">网络类型:</span>
         <select v-model="localCfg.networkType" class="select-field" @change="updateCfg">
-          <option v-for="source in props.sources" :key="source" :value="source">
-            {{ source }}
+          <option v-for="type in networkTypes" :key="type" :value="type">
+            {{ type }}
           </option>
-          <option value="bridge">桥接模式</option>
+        </select>
+      </div>
+      <div class="info-item" v-if="localCfg.networkType === 'network'">
+        <span class="label">虚拟网卡:</span>
+        <select v-model="localCfg.netName" class="select-field" @change="updateCfg">
+          <option v-for="src in hostMsg.netNames" :key="src" :value="src">
+            {{ src }}
+          </option>
         </select>
       </div>
       <div v-if="localCfg.networkType === 'bridge'" class="info-item">
@@ -53,16 +60,21 @@ const props = defineProps({
     type: Object,
     default: () => ({
       networkType: 'bridge',
+      netName: '',
       bridgeName: '',
       macAddress: '',
       model: 'virtio',
     }),
   },
-  sources: {
-    type: Array,
-    default: () => ['default'],
+  hostMsg: {
+    type: Object,
+    default: () => ({
+      netNames: ['default'],
+    }),
   },
 })
+
+const networkTypes = ['network', 'bridge', 'direct']
 
 // 定义事件
 const emit = defineEmits(['update:cfg'])
