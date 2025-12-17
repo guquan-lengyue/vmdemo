@@ -22,14 +22,20 @@ function cpuXml({ cfg }) {
  * @returns
  */
 function diskXml({ cfg }) {
-  const readonlyTag = cfg.isReadOnly && cfg.diskType === 'cdrom' ? '<readonly/>' : ''
+  // 只对CDROM类型添加只读标签
+  const readonlyTag = cfg.diskType === 'cdrom' ? '<readonly/>' : ''
+  // 只对CDROM类型添加可弹出标签
+  const removableTag = cfg.diskType === 'cdrom' ? '<removable/>' : ''
+  // 只有当bootOrder大于0时才添加启动顺序
+  const bootOrderTag = cfg.bootOrder !== undefined && cfg.bootOrder > 0 ? `<boot order="${cfg.bootOrder}"/>` : ''
   return `
 <disk type="file" device="${cfg.diskType}">
-  <driver name="qemu" type="${cfg.diskFormat}" discard="unmap"/>
+  <driver name="qemu" type="${cfg.diskFormat}"${cfg.diskType !== 'cdrom' ? ' discard="unmap"' : ''}/>
   <source file="${cfg.sourcePath}"/>
   <target dev="${cfg.targetDev}" bus="${cfg.targetBus}"/>
   ${readonlyTag}
-  <boot order="${cfg.bootOrder || 0 + 1}"/>
+  ${removableTag}
+  ${bootOrderTag}
 </disk>
 `
 }
@@ -57,12 +63,14 @@ function interfaceXml({ cfg }) {
   if (cfg.model === 'default') {
     model = `<model type="${cfg.model}"/>`
   }
+  // 只有当bootOrder大于0时才添加启动顺序
+  const bootOrderTag = cfg.bootOrder !== undefined && cfg.bootOrder > 0 ? `<boot order="${cfg.bootOrder}"/>` : ''
   return `
 <interface type="${cfg.networkType}">
   <source network="${cfg.networkType === 'bridge' ? cfg.bridgeName : cfg.netName}"/>
   <mac address="${cfg.macAddress}"/>
   ${model}
-  <boot order="${cfg.bootOrder || 0 + 1}"/>
+  ${bootOrderTag}
 </interface>
 `
 }
@@ -152,6 +160,37 @@ function videoXml({ cfg }) {
  * @returns
  */
 function xml(cfg_list) {
+  // 跟踪已使用的启动顺序
+  const usedBootOrders = new Set()
+
+  // 处理磁盘XML，确保启动顺序唯一
+  const diskXmls = cfg_list
+    .filter((i) => i.type === 'disk')
+    .map(item => {
+      if (item.cfg.bootOrder > 0 && usedBootOrders.has(item.cfg.bootOrder)) {
+        // 如果启动顺序已被使用，将其设置为0（不添加启动顺序标签）
+        item.cfg.bootOrder = 0
+      } else if (item.cfg.bootOrder > 0) {
+        usedBootOrders.add(item.cfg.bootOrder)
+      }
+      return diskXml(item)
+    })
+    .join('\n')
+
+  // 处理网络接口XML，确保启动顺序唯一
+  const interfaceXmls = cfg_list
+    .filter((i) => i.type === 'interface')
+    .map(item => {
+      if (item.cfg.bootOrder > 0 && usedBootOrders.has(item.cfg.bootOrder)) {
+        // 如果启动顺序已被使用，将其设置为0（不添加启动顺序标签）
+        item.cfg.bootOrder = 0
+      } else if (item.cfg.bootOrder > 0) {
+        usedBootOrders.add(item.cfg.bootOrder)
+      }
+      return interfaceXml(item)
+    })
+    .join('\n')
+
   const overviewXmls = cfg_list
     .filter((i) => i.type === 'overview')
     .map(overviewXml)
@@ -163,14 +202,6 @@ function xml(cfg_list) {
   const memoryXmls = cfg_list
     .filter((i) => i.type === 'memory')
     .map(memoryXml)
-    .join('\n')
-  const diskXmls = cfg_list
-    .filter((i) => i.type === 'disk')
-    .map(diskXml)
-    .join('\n')
-  const interfaceXmls = cfg_list
-    .filter((i) => i.type === 'interface')
-    .map(interfaceXml)
     .join('\n')
   const displayXmls = cfg_list
     .filter((i) => i.type === 'display')
