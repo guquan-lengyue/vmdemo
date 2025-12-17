@@ -22,6 +22,7 @@ func main() {
 	}
 	service.CrateVncWs(g)
 	service.GetUsbList(g)
+	service.RegisterUUIDRoutes(g)
 	err = r.Run(":8080")
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
