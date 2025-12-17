@@ -99,7 +99,7 @@ function memoryXml({ cfg }) {
  */
 function overviewXml({ cfg }) {
   let osFirmwareTag = ''
-  if (cfg.osFirmware === 'efi') {
+  if (cfg.osFirmware === 'uefi') {
     osFirmwareTag = `firmware="${cfg.osFirmware}"`
   }
   return `

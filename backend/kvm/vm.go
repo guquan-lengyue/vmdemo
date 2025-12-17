@@ -188,7 +188,7 @@ func ForceShutdownVM(vmName string) error {
 
 // DeleteVM 删除指定的虚拟机
 func DeleteVM(vmName string) error {
-	_, err := ExecVirshCommand("undefine", vmName, "--nvram", "--remove-all-storage")
+	_, err := ExecVirshCommand("undefine", vmName, "--nvram")
 	return err
 }
 
