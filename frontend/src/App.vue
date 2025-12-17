@@ -64,9 +64,11 @@ const fetchVMs = async () => {
   loading.value = true
   try {
     const data = await vmApi.listVMs()
-    vms.value = data
+    // 后端返回的数据结构是{"vms": [虚拟机列表]}，需要正确提取
+    vms.value = data.vms || []
   } catch (error) {
     console.error('获取虚拟机列表失败:', error)
+    vms.value = [] // 出错时确保vms是数组
   } finally {
     loading.value = false
   }
