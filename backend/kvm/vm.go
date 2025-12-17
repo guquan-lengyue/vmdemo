@@ -218,6 +218,23 @@ func CreateVMFromXML(vmName, xmlConfig string) error {
 	return err
 }
 
+// UpdateVMFromXML 通过xml更新虚拟机配置
+func UpdateVMFromXML(vmName, xmlConfig string) error {
+	// 将xml文本写入到临时文件中
+	xmlPath := "/tmp/" + vmName + "_update.xml"
+	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", name, err)
+		}
+	}(xmlPath) // 更新完成后删除临时文件
+
+	// 使用virsh define命令更新虚拟机配置
+	_, err = ExecVirshCommand("define", "--file", xmlPath)
+	return err
+}
+
 // AttachUsbDevice 为虚拟机添加usb设备
 func AttachUsbDevice(vmName, usbId string) error {
 	return editVmUsb(vmName, usbId, "attach-device")

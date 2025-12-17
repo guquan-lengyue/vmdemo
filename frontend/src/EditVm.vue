@@ -285,8 +285,19 @@ onMounted(async () => {
 })
 
 function handleInstall() {
+  // 添加调试代码，检查内存配置
+  console.log('btnGroup.value:', btnGroup.value)
+  const memoryCfg = btnGroup.value.find(item => item.type === 'memory')
+  console.log('内存配置:', memoryCfg)
+
   const xmlStr = xml(btnGroup.value)
   console.log('生成的XML配置:', xmlStr)
+
+  // 验证XML格式是否正确
+  if (!xmlStr || xmlStr.trim() === '') {
+    console.error('生成的XML配置为空')
+    return
+  }
 
   // 保存配置到后端
   saveVMConfig(xmlStr)

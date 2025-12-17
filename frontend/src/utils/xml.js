@@ -73,9 +73,14 @@ function interfaceXml({ cfg }) {
  * @returns
  */
 function memoryXml({ cfg }) {
+  // 确保内存值存在且为正数
+  const memory = cfg.memory && cfg.memory > 0 ? cfg.memory : 2048
+  const currentMemory = cfg.currentMemory && cfg.currentMemory > 0 ? cfg.currentMemory : 2048
+
+  // XML中的内存值通常是以KB为单位的，而前端的内存配置是以MB为单位的，所以需要进行单位转换
   return `
-  <memory>${cfg.memory}</memory>
-  <currentMemory>${cfg.currentMemory}</currentMemory>
+  <memory unit="MiB">${memory}</memory>
+  <currentMemory unit="MiB">${currentMemory}</currentMemory>
 `
 }
 

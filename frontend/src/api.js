@@ -1,6 +1,6 @@
 // API 对接文件，使用 fetch 实现所有后端接口调用
 
-const API_BASE_URL = 'http://localhost:5173/api';
+const API_BASE_URL = '/api';
 
 // 封装 fetch 请求
 async function request(endpoint, options = {}) {
