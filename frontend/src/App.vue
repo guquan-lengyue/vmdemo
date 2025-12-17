@@ -40,10 +40,11 @@
       </div>
     </div>
 
-    <!-- 编辑虚拟机页面 -->
-    <div v-if="editingVm" class="edit-vm">
-      <button @click="editingVm = ''" class="back-btn">返回列表</button>
-      <EditVm :vm-name="editingVm" @vm-updated="handleVmUpdated" />
+    <!-- 编辑虚拟机模态框 -->
+    <div v-if="showEditModal" class="modal-overlay create-vm-modal" @click="showEditModal = false">
+      <div class="modal-content" @click.stop>
+        <EditVm :vm-name="editingVm" @vm-updated="handleVmUpdated" />
+      </div>
     </div>
   </div>
 </template>
@@ -58,6 +59,7 @@ const vms = ref([])
 const loading = ref(false)
 const editingVm = ref('')
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
 
 // 获取虚拟机列表
 const fetchVMs = async () => {
@@ -129,10 +131,12 @@ const handleDelete = async (vmName) => {
 
 const handleEdit = (vmName) => {
   editingVm.value = vmName
+  showEditModal.value = true
 }
 
 const handleVmUpdated = () => {
   editingVm.value = ''
+  showEditModal.value = false
   fetchVMs() // 刷新列表
 }
 
@@ -343,20 +347,5 @@ const handleCreateModalUpdated = () => {
   background-color: #f5f5f5;
   color: #333;
   border: 1px solid #ddd;
-}
-
-/* 编辑页面样式 */
-.edit-vm {
-  margin-top: 20px;
-}
-
-.back-btn {
-  background-color: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 20px;
 }
 </style>

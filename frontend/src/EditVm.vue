@@ -259,10 +259,13 @@ provide('btnGroup', btnGroup.value)
 onMounted(async () => {
   if (props.vmName && props.vmName !== 'new') {
     try {
-      const vmInfo = await vmApi.getVMInfo(props.vmName)
-      // 这里需要解析vmInfo中的XML配置并更新btnGroup
-      // 由于没有具体的XML解析逻辑，目前保持默认配置
+      const response = await vmApi.getVMInfo(props.vmName)
+      // 解析vmInfo中的XML配置并更新btnGroup
+      const vmInfo = response.vmInfo || ''
       console.log('获取到虚拟机配置:', vmInfo)
+      if (vmInfo) {
+        parseVMXML(vmInfo)
+      }
     } catch (error) {
       console.error('获取虚拟机配置失败:', error)
     }
@@ -359,6 +362,199 @@ function deleteHardware(index) {
 
   // 从按钮组中删除该项
   btnGroup.value.splice(index, 1)
+}
+
+// 解析VM XML配置并更新btnGroup
+function parseVMXML(xmlString) {
+  const parser = new DOMParser()
+  const xmlDoc = parser.parseFromString(xmlString, 'text/xml')
+
+  // 解析概况信息
+  const overviewItem = btnGroup.value.find(item => item.type === 'overview')
+  if (overviewItem) {
+    overviewItem.cfg.name = xmlDoc.querySelector('domain > name')?.textContent || 'unknown'
+    overviewItem.cfg.uuid = xmlDoc.querySelector('domain > uuid')?.textContent || ''
+    overviewItem.cfg.osMachine = xmlDoc.querySelector('domain > os > type')?.getAttribute('machine') || 'pc'
+    // 解析固件类型 (BIOS 或 UEFI)
+    const loader = xmlDoc.querySelector('domain > os > loader')
+    overviewItem.cfg.osFirmware = loader ? 'uefi' : 'bios'
+  }
+
+  // 解析CPU信息
+  const cpuItem = btnGroup.value.find(item => item.type === 'cpu')
+  if (cpuItem) {
+    const vcpu = xmlDoc.querySelector('domain > vcpu')
+    cpuItem.cfg.cpuCount = vcpu ? parseInt(vcpu.textContent) : 1
+
+    // 解析CPU模式
+    const cpuMode = xmlDoc.querySelector('domain > cpu')?.getAttribute('mode')
+    cpuItem.cfg.cpuMode = cpuMode || 'host-model'
+
+    // 解析CPU拓扑
+    const topology = xmlDoc.querySelector('domain > cpu > topology')
+    if (topology) {
+      cpuItem.cfg.isNotManualTopology = false
+      cpuItem.cfg.manualTopology = {
+        sockets: parseInt(topology.getAttribute('sockets')) || 1,
+        cores: parseInt(topology.getAttribute('cores')) || 1,
+        threads: parseInt(topology.getAttribute('threads')) || 1
+      }
+    } else {
+      cpuItem.cfg.isNotManualTopology = true
+    }
+  }
+
+  // 解析内存信息
+  const memoryItem = btnGroup.value.find(item => item.type === 'memory')
+  if (memoryItem) {
+    const memory = xmlDoc.querySelector('domain > memory')
+    const currentMemory = xmlDoc.querySelector('domain > currentMemory')
+
+    // 注意：XML中的内存值通常是以KB为单位的
+    memoryItem.cfg.memory = memory ? Math.round(parseInt(memory.textContent) / 1024) : 2048
+    memoryItem.cfg.currentMemory = currentMemory ? Math.round(parseInt(currentMemory.textContent) / 1024) : 2048
+  }
+
+  // 解析磁盘信息
+  const diskNodes = xmlDoc.querySelectorAll('domain > devices > disk')
+  let diskIndex = 0
+  diskNodes.forEach((diskNode, index) => {
+    const deviceType = diskNode.getAttribute('device')
+    const diskType = diskNode.getAttribute('type')
+
+    if (deviceType === 'disk') {
+      let diskItem
+      if (index === 0) {
+        // 使用默认的磁盘配置项
+        diskItem = btnGroup.value.find(item => item.type === 'disk')
+      } else {
+        // 添加新的磁盘配置项
+        diskItem = {
+          cfg: {},
+          name: `磁盘 ${index + 1}`,
+          type: 'disk'
+        }
+        btnGroup.value.push(diskItem)
+      }
+
+      if (diskItem) {
+        // 解析磁盘源路径
+        const source = diskNode.querySelector('source')
+        if (source) {
+          if (diskType === 'file') {
+            diskItem.cfg.sourcePath = source.getAttribute('file') || ''
+          } else if (diskType === 'block') {
+            diskItem.cfg.sourcePath = source.getAttribute('dev') || ''
+          }
+        }
+
+        // 解析磁盘格式
+        const driver = diskNode.querySelector('driver')
+        diskItem.cfg.diskFormat = driver ? driver.getAttribute('type') || 'qcow2' : 'qcow2'
+
+        // 解析磁盘目标设备和总线
+        const target = diskNode.querySelector('target')
+        if (target) {
+          diskItem.cfg.targetDev = target.getAttribute('dev') || 'vda'
+          diskItem.cfg.targetBus = target.getAttribute('bus') || 'virtio'
+        }
+
+        // 解析只读属性
+        const readonly = diskNode.querySelector('readonly')
+        diskItem.cfg.isReadOnly = !!readonly
+
+        // 解析启动顺序
+        const boot = diskNode.querySelector('boot')
+        if (boot) {
+          diskItem.cfg.bootOrder = parseInt(boot.getAttribute('order')) || 0
+        }
+
+        diskIndex++
+      }
+    }
+  })
+
+  // 解析网络接口信息
+  const interfaceNodes = xmlDoc.querySelectorAll('domain > devices > interface')
+  let interfaceIndex = 0
+  interfaceNodes.forEach((interfaceNode, index) => {
+    let interfaceItem
+    if (index === 0) {
+      // 使用默认的网络接口配置项
+      interfaceItem = btnGroup.value.find(item => item.type === 'interface')
+    } else {
+      // 添加新的网络接口配置项
+      interfaceItem = {
+        cfg: {},
+        name: `网络接口 ${index + 1}`,
+        type: 'interface'
+      }
+      btnGroup.value.push(interfaceItem)
+    }
+
+    if (interfaceItem) {
+      // 解析网络类型
+      const source = interfaceNode.querySelector('source')
+      if (source) {
+        if (source.hasAttribute('network')) {
+          interfaceItem.cfg.networkType = 'network'
+          interfaceItem.cfg.netName = source.getAttribute('network') || 'default'
+        } else if (source.hasAttribute('bridge')) {
+          interfaceItem.cfg.networkType = 'bridge'
+          interfaceItem.cfg.bridgeName = source.getAttribute('bridge') || ''
+        }
+      }
+
+      // 解析MAC地址
+      const mac = interfaceNode.querySelector('mac')
+      interfaceItem.cfg.macAddress = mac ? mac.getAttribute('address') || '' : ''
+
+      // 解析网卡模型
+      const model = interfaceNode.querySelector('model')
+      interfaceItem.cfg.model = model ? model.getAttribute('type') || 'virtio' : 'virtio'
+
+      interfaceIndex++
+    }
+  })
+
+  // 解析显示信息
+  const displayItem = btnGroup.value.find(item => item.type === 'display')
+  if (displayItem) {
+    const graphics = xmlDoc.querySelector('domain > devices > graphics')
+    if (graphics) {
+      displayItem.cfg.type = graphics.getAttribute('type') || 'vnc'
+      displayItem.cfg.port = graphics.getAttribute('port') || '-1'
+      displayItem.cfg.listen = graphics.getAttribute('listen') || '0.0.0.0'
+      displayItem.cfg.passwd = graphics.getAttribute('passwd') || ''
+    }
+  }
+
+  // 解析声音信息
+  const soundItem = btnGroup.value.find(item => item.type === 'sound')
+  if (soundItem) {
+    const sound = xmlDoc.querySelector('domain > devices > sound')
+    if (sound) {
+      const model = sound.querySelector('model')
+      soundItem.cfg.model = model ? model.getAttribute('type') || 'ac97' : 'ac97'
+    }
+  }
+
+  // 解析视频信息
+  const videoItem = btnGroup.value.find(item => item.type === 'video')
+  if (videoItem) {
+    const video = xmlDoc.querySelector('domain > devices > video')
+    if (video) {
+      const model = video.querySelector('model')
+      if (model) {
+        videoItem.cfg.model = {
+          type: model.getAttribute('type') || 'qxl',
+          acceleration: {
+            accel3d: model.getAttribute('accel3d') || 'no'
+          }
+        }
+      }
+    }
+  }
 }
 </script>
 
