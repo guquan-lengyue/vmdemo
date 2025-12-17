@@ -11,14 +11,6 @@
       <span class="value">{{ localCfg.uuid }}</span>
     </div>
     <div class="info-item">
-      <span class="label">操作系统:</span>
-      <span class="value">Ubuntu 25.10</span>
-    </div>
-    <div class="info-item">
-      <span class="label">架构:</span>
-      <span class="value">x86_64</span>
-    </div>
-    <div class="info-item">
       <span class="label">固件类型:</span>
       <select
         class="value"

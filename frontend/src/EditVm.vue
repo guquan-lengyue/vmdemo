@@ -276,6 +276,12 @@ onMounted(async () => {
       overviewItem.cfg.name = `vm-${Date.now()}`
     }
   }
+
+  // 初始化当前选中的菜单项，确保默认显示概况且能正确获取配置
+  const overviewIndex = btnGroup.value.findIndex(item => item.type === 'overview')
+  if (overviewIndex !== -1) {
+    handleMenuClick(btnGroup.value[overviewIndex], overviewIndex)
+  }
 })
 
 function handleInstall() {
