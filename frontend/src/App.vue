@@ -15,15 +15,15 @@
         <div v-for="vm in vms" :key="vm.name" class="vm-card">
           <div class="vm-header">
             <h3>{{ vm.name }}</h3>
-            <span :class="['status-indicator', (vm.status || 'unknown').toLowerCase()]">
-              {{ vm.status || '未知状态' }}
+            <span :class="['status-indicator', (vm.state || 'unknown').toLowerCase()]">
+              {{ vm.state || '未知状态' }}
             </span>
           </div>
           <div class="vm-actions">
-            <button @click="handleStart(vm.name)" :disabled="vm.status === 'running'" class="btn start-btn">启动</button>
-            <button @click="handleStop(vm.name)" :disabled="vm.status === 'shut off'" class="btn stop-btn">停止</button>
-            <button @click="handleSuspend(vm.name)" :disabled="vm.status !== 'running'" class="btn suspend-btn">挂起</button>
-            <button @click="handleResume(vm.name)" :disabled="vm.status !== 'paused'" class="btn resume-btn">恢复</button>
+            <button @click="handleStart(vm.name)" :disabled="vm.state === 'running'" class="btn start-btn">启动</button>
+            <button @click="handleStop(vm.name)" :disabled="vm.state === 'shut off'" class="btn stop-btn">停止</button>
+            <button @click="handleSuspend(vm.name)" :disabled="vm.state !== 'running'" class="btn suspend-btn">挂起</button>
+            <button @click="handleResume(vm.name)" :disabled="vm.state !== 'paused'" class="btn resume-btn">恢复</button>
             <button @click="handleEdit(vm.name)" class="btn edit-btn">编辑</button>
             <button @click="handleDelete(vm.name)" class="btn delete-btn">删除</button>
           </div>

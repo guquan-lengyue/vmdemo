@@ -530,7 +530,7 @@ function parseVMXML(xmlString) {
       const model = interfaceNode.querySelector('model')
       interfaceItem.cfg.model = model ? model.getAttribute('type') || 'virtio' : 'virtio'
 
-      interfaceIndex++
+
     }
   })
 

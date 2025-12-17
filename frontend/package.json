@@ -29,6 +29,7 @@
     "vite": "^7.1.11",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-vue-devtools": "^8.0.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "vue-eslint-parser": "^10.2.0"
   }
 }

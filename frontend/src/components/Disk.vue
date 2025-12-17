@@ -57,7 +57,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 // 接收父组件传递的配置
 const props = defineProps({
