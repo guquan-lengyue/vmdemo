@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, computed, provide, watch, onMounted } from 'vue'
+import { ref,  provide,  onMounted } from 'vue'
 import Overview from './components/Overview.vue'
 import CPU from './components/CPU.vue'
 import Memory from './components/Memery.vue'
@@ -469,8 +469,6 @@ function parseVMXML(xmlString) {
 
   // 解析磁盘信息
   const diskNodes = xmlDoc.querySelectorAll('domain > devices > disk')
-  let diskIndex = 0
-
   // 总线类型映射
   const targetBusTypes = [
     { label: 'VirtIO', value: 'virtio' },
@@ -492,8 +490,6 @@ function parseVMXML(xmlString) {
     // 处理所有磁盘类型，包括disk和cdrom
     if (deviceType === 'disk' || deviceType === 'cdrom') {
       let diskItem
-      let existingDiskIndex = -1
-
       // 查找是否已有磁盘配置项
       if (index === 0) {
         // 使用默认的磁盘配置项
@@ -553,8 +549,6 @@ function parseVMXML(xmlString) {
         const targetBusLabel = targetBusTypes.find((i) => i.value === diskItem.cfg.targetBus)?.label || 'VirtIO'
         const diskTypeLabel = disKTypes.find((i) => i.value === diskItem.cfg.diskType)?.label || '磁盘'
         diskItem.name = `${targetBusLabel}-${diskTypeLabel}`
-
-        diskIndex++
       }
     }
   })

@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 // 引入 noVNC 核心类和样式
 import RFB from '@novnc/novnc/lib/rfb'
 
