@@ -290,6 +290,9 @@ function handleInstall() {
   const memoryCfg = btnGroup.value.find(item => item.type === 'memory')
   console.log('内存配置:', memoryCfg)
 
+  // 在生成XML之前初始化所有可启动设备的启动顺序
+  initBootOrder()
+
   const xmlStr = xml(btnGroup.value)
   console.log('生成的XML配置:', xmlStr)
 
@@ -301,6 +304,33 @@ function handleInstall() {
 
   // 保存配置到后端
   saveVMConfig(xmlStr)
+}
+
+// 初始化所有可启动设备的启动顺序
+function initBootOrder() {
+  // 收集所有可启动设备
+  const bootableDevices = []
+  btnGroup.value.forEach((item, index) => {
+    if (item.type === 'disk' || item.type === 'interface') {
+      bootableDevices.push({
+        originalIndex: index,
+        cfg: item.cfg
+      })
+    }
+  })
+
+  // 按bootOrder排序
+  bootableDevices.sort((a, b) => {
+    const orderA = a.cfg.bootOrder || 0
+    const orderB = b.cfg.bootOrder || 0
+    return orderA - orderB
+  })
+
+  // 为所有设备分配连续的启动顺序
+  bootableDevices.forEach((device, index) => {
+    const bootOrder = index + 1
+    btnGroup.value[device.originalIndex].cfg.bootOrder = bootOrder
+  })
 }
 
 // 取消操作
@@ -347,6 +377,11 @@ function addHardware(type) {
   // 选中新添加的硬件
   const newIndex = btnGroup.value.length - 1
   handleMenuClick(newHardware, newIndex)
+
+  // 如果添加的是可启动设备，初始化所有可启动设备的启动顺序
+  if (type.value === 'disk' || type.value === 'interface') {
+    initBootOrder()
+  }
 }
 
 // 获取硬件类型的中文标签
@@ -435,26 +470,54 @@ function parseVMXML(xmlString) {
   // 解析磁盘信息
   const diskNodes = xmlDoc.querySelectorAll('domain > devices > disk')
   let diskIndex = 0
+
+  // 总线类型映射
+  const targetBusTypes = [
+    { label: 'VirtIO', value: 'virtio' },
+    { label: 'SATA', value: 'sata' },
+    { label: 'IDE', value: 'ide' },
+    { label: 'SCSI', value: 'scsi' },
+  ]
+
+  // 磁盘类型映射
+  const disKTypes = [
+    { label: '磁盘', value: 'disk' },
+    { label: '光驱', value: 'cdrom' },
+  ]
+
   diskNodes.forEach((diskNode, index) => {
     const deviceType = diskNode.getAttribute('device')
     const diskType = diskNode.getAttribute('type')
 
-    if (deviceType === 'disk') {
+    // 处理所有磁盘类型，包括disk和cdrom
+    if (deviceType === 'disk' || deviceType === 'cdrom') {
       let diskItem
+      let existingDiskIndex = -1
+
+      // 查找是否已有磁盘配置项
       if (index === 0) {
         // 使用默认的磁盘配置项
         diskItem = btnGroup.value.find(item => item.type === 'disk')
       } else {
-        // 添加新的磁盘配置项
-        diskItem = {
-          cfg: {},
-          name: `磁盘 ${index + 1}`,
-          type: 'disk'
+        // 检查是否已有足够的磁盘配置项
+        const existingDisks = btnGroup.value.filter(item => item.type === 'disk')
+        if (existingDisks.length > index) {
+          diskItem = existingDisks[index]
+        } else {
+          // 添加新的磁盘配置项
+          diskItem = {
+            cfg: {},
+            name: `磁盘 ${index + 1}`,
+            type: 'disk'
+          }
+          btnGroup.value.push(diskItem)
         }
-        btnGroup.value.push(diskItem)
       }
 
       if (diskItem) {
+        // 设置磁盘类型（disk或cdrom）
+        diskItem.cfg.diskType = deviceType
+
         // 解析磁盘源路径
         const source = diskNode.querySelector('source')
         if (source) {
@@ -486,6 +549,11 @@ function parseVMXML(xmlString) {
           diskItem.cfg.bootOrder = parseInt(boot.getAttribute('order')) || 0
         }
 
+        // 更新菜单名称，按照 总线类型-磁盘类型 的规则
+        const targetBusLabel = targetBusTypes.find((i) => i.value === diskItem.cfg.targetBus)?.label || 'VirtIO'
+        const diskTypeLabel = disKTypes.find((i) => i.value === diskItem.cfg.diskType)?.label || '磁盘'
+        diskItem.name = `${targetBusLabel}-${diskTypeLabel}`
+
         diskIndex++
       }
     }
@@ -493,7 +561,6 @@ function parseVMXML(xmlString) {
 
   // 解析网络接口信息
   const interfaceNodes = xmlDoc.querySelectorAll('domain > devices > interface')
-  let interfaceIndex = 0
   interfaceNodes.forEach((interfaceNode, index) => {
     let interfaceItem
     if (index === 0) {
