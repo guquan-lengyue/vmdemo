@@ -22,6 +22,7 @@
           <div class="vm-actions">
             <button @click="handleStart(vm.name)" :disabled="vm.state === 'running'" class="btn start-btn">启动</button>
             <button @click="handleStop(vm.name)" :disabled="vm.state === 'shut off'" class="btn stop-btn">停止</button>
+            <button @click="handleForceShutdown(vm.name)" :disabled="vm.state !== 'running'" class="btn force-shutdown-btn">强制关机</button>
             <button @click="handleSuspend(vm.name)" :disabled="vm.state !== 'running'" class="btn suspend-btn">挂起</button>
             <button @click="handleResume(vm.name)" :disabled="vm.state !== 'paused'" class="btn resume-btn">恢复</button>
             <button @click="handleEdit(vm.name)" class="btn edit-btn">编辑</button>
@@ -112,6 +113,17 @@ const handleStop = async (vmName) => {
     await fetchVMs() // 刷新列表
   } catch (error) {
     console.error('停止虚拟机失败:', error)
+  }
+}
+
+const handleForceShutdown = async (vmName) => {
+  if (confirm(`确定要强制关闭虚拟机 ${vmName} 吗？此操作可能会导致数据丢失！`)) {
+    try {
+      await vmApi.forceShutdownVM(vmName)
+      await fetchVMs() // 刷新列表
+    } catch (error) {
+      console.error('强制关闭虚拟机失败:', error)
+    }
   }
 }
 
@@ -282,6 +294,16 @@ const handleVncConnect = (vmName) => {
 .stop-btn {
   background-color: #f44336;
   color: white;
+}
+
+.force-shutdown-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: 1px solid #b71c1c;
+}
+
+.force-shutdown-btn:hover {
+  background-color: #b71c1c;
 }
 
 .suspend-btn {
