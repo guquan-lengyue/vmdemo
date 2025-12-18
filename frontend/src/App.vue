@@ -26,6 +26,7 @@
             <button @click="handleResume(vm.name)" :disabled="vm.state !== 'paused'" class="btn resume-btn">恢复</button>
             <button @click="handleEdit(vm.name)" class="btn edit-btn">编辑</button>
             <button @click="handleDelete(vm.name)" class="btn delete-btn">删除</button>
+            <button @click="handleVncConnect(vm.name)" :disabled="vm.state !== 'running'" class="btn vnc-btn">连接VNC</button>
           </div>
         </div>
       </div>
@@ -46,6 +47,17 @@
         <EditVm :vm-name="editingVm" @vm-updated="handleVmUpdated" />
       </div>
     </div>
+
+    <!-- VNC连接模态框 -->
+    <div v-if="showVncModal" class="modal-overlay vnc-modal" @click="showVncModal = false">
+      <div class="modal-content vnc-content" @click.stop>
+        <div class="vnc-header">
+          <h3>VNC - {{ connectedVmName }}</h3>
+          <button @click="showVncModal = false" class="close-btn">×</button>
+        </div>
+        <VNC :vm-name="connectedVmName" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -53,6 +65,7 @@
 import { ref, onMounted } from 'vue'
 import { vmApi } from './api.js'
 import EditVm from './EditVm.vue'
+import VNC from './components/VNC.vue'
 
 // 数据状态
 const vms = ref([])
@@ -60,6 +73,8 @@ const loading = ref(false)
 const editingVm = ref('')
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
+const showVncModal = ref(false)
+const connectedVmName = ref('')
 
 // 获取虚拟机列表
 const fetchVMs = async () => {
@@ -143,6 +158,11 @@ const handleVmUpdated = () => {
 const handleCreateModalUpdated = () => {
   showCreateModal.value = false
   fetchVMs() // 刷新列表
+}
+
+const handleVncConnect = (vmName) => {
+  connectedVmName.value = vmName
+  showVncModal.value = true
 }
 </script>
 
@@ -316,6 +336,47 @@ const handleCreateModalUpdated = () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* VNC模态框特定样式 */
+.vnc-modal .modal-content {
+  width: 95vw;
+  max-width: 95vw;
+  height: 95vh;
+  max-height: 95vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vnc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.vnc-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.vnc-btn {
+  background-color: #2196F3;
+  color: white;
 }
 
 .form-group {
