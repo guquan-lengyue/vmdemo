@@ -70,6 +70,7 @@ import Interface from './components/Interface.vue'
 import Display from './components/Display.vue'
 import Sound from './components/Sound.vue'
 import Video from './components/Video.vue'
+import USB from './components/USB.vue'
 import { xml } from './utils/xml'
 import { vmApi, systemApi } from './api.js'
 
@@ -97,6 +98,7 @@ const componentMap = {
   display: Display,
   sound: Sound,
   video: Video,
+  usb: USB,
 }
 
 // 主机信息
@@ -206,6 +208,7 @@ const availableHardwareTypes = [
   { label: '显示', value: 'display' },
   { label: '视频', value: 'video' },
   { label: '声音', value: 'sound' },
+  { label: 'USB设备', value: 'usb' },
 ]
 
 // 跟踪当前选中的菜单项索引
@@ -642,6 +645,45 @@ function parseVMXML(xmlString) {
         }
       }
     }
+  }
+
+  // 解析USB设备信息
+  const hostdevNodes = xmlDoc.querySelectorAll('domain > devices > hostdev')
+  const usbDevices = []
+
+  hostdevNodes.forEach(node => {
+    // 只处理USB设备
+    if (node.getAttribute('type') === 'usb' && node.getAttribute('mode') === 'subsystem') {
+      const vendor = node.querySelector('source > vendor')
+      const product = node.querySelector('source > product')
+
+      if (vendor && product) {
+        const vendorId = vendor.getAttribute('id') || ''
+        const productId = product.getAttribute('id') || ''
+
+        // 组合成设备ID格式：vendorId:productId（去掉0x前缀）
+        const deviceId = `${vendorId.replace('0x', '')}:${productId.replace('0x', '')}`
+        usbDevices.push(deviceId)
+      }
+    }
+  })
+
+  if (usbDevices.length > 0) {
+    // 查找是否已有USB配置项
+    let usbItem = btnGroup.value.find(item => item.type === 'usb')
+
+    if (!usbItem) {
+      // 添加新的USB配置项
+      usbItem = {
+        cfg: {},
+        name: 'USB设备',
+        type: 'usb'
+      }
+      btnGroup.value.push(usbItem)
+    }
+
+    // 设置USB设备配置
+    usbItem.cfg.attachedDevices = usbDevices
   }
 }
 </script>

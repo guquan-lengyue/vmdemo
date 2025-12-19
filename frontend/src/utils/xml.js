@@ -155,6 +155,30 @@ function videoXml({ cfg }) {
 }
 
 /**
+ * 生成USB设备配置的XML
+ * @param {*} cfg
+ * @returns
+ */
+function usbXml({ cfg }) {
+  if (!cfg.attachedDevices || cfg.attachedDevices.length === 0) {
+    return ''
+  }
+
+  // 为每个附加的USB设备生成XML配置
+  return cfg.attachedDevices.map(deviceId => {
+    const [vendorId, productId] = deviceId.split(':')
+    return `
+<hostdev mode="subsystem" type="usb" managed="yes">
+  <source>
+    <vendor id="0x${vendorId}"/>
+    <product id="0x${productId}"/>
+  </source>
+</hostdev>
+`
+  }).join('')
+}
+
+/**
  * 生成CPU配置的XML
  * @param {List<*>} cfg_list
  * @returns
@@ -215,6 +239,10 @@ function xml(cfg_list) {
     .filter((i) => i.type === 'video')
     .map(videoXml)
     .join('\n')
+  const usbXmls = cfg_list
+    .filter((i) => i.type === 'usb')
+    .map(usbXml)
+    .join('\n')
   return `
 <domain type="kvm">
   ${overviewXmls}
@@ -253,6 +281,7 @@ function xml(cfg_list) {
     ${displayXmls}
     ${soundXmls}
     ${videoXmls}
+    ${usbXmls}
     <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
