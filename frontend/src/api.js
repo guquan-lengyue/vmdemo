@@ -124,10 +124,16 @@ export const vncApi = {
   getVncWs: (vmName) => `${API_BASE_URL}/vnc/${vmName}`,
 };
 
-// USB 操作相关 API
+// USB 设备相关 API
 export const usbApi = {
   // 获取 USB 设备列表
-  getUsbList: () => request(`/usb/list`),
+  listUsbDevices: () => request(`/usb/list`),
+};
+
+// 系统资源相关 API
+export const systemApi = {
+  // 获取系统资源信息（CPU核心数和内存大小）
+  getSystemResources: () => request(`/system/resources`),
 };
 
 // UUID 相关 API

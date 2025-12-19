@@ -192,6 +192,50 @@ func DeleteVM(vmName string) error {
 	return err
 }
 
+// SystemResourceInfo 表示系统资源信息
+type SystemResourceInfo struct {
+	CPUCores    int   `json:"cpuCores"`
+	TotalMemory int64 `json:"totalMemory"` // MB
+}
+
+// GetSystemResourceInfo 获取系统CPU核心数量和内存大小信息
+func GetSystemResourceInfo() (*SystemResourceInfo, error) {
+	// 获取CPU核心数量
+	cpuOutput, err := exec.Command("lscpu", "--parse=CPU").Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取CPU信息失败: %v", err)
+	}
+
+	cpuLines := strings.Split(string(cpuOutput), "\n")
+	cpuCores := 0
+	for _, line := range cpuLines {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			cpuCores++
+		}
+	}
+
+	// 获取内存大小
+	memOutput, err := exec.Command("free", "-m").Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取内存信息失败: %v", err)
+	}
+
+	memLines := strings.Split(string(memOutput), "\n")
+	var totalMemory int64
+	if len(memLines) >= 2 {
+		memParts := strings.Fields(memLines[1])
+		if len(memParts) >= 2 {
+			fmt.Sscanf(memParts[1], "%d", &totalMemory)
+		}
+	}
+
+	return &SystemResourceInfo{
+		CPUCores:    cpuCores,
+		TotalMemory: totalMemory,
+	}, nil
+}
+
 // CreateVMFromXML 通过xml创建虚拟机
 func CreateVMFromXML(vmName, xmlConfig string) error {
 	// 将xml文本写入到临时文件中,

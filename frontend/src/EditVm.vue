@@ -71,7 +71,7 @@ import Display from './components/Display.vue'
 import Sound from './components/Sound.vue'
 import Video from './components/Video.vue'
 import { xml } from './utils/xml'
-import { vmApi } from './api.js'
+import { vmApi, systemApi } from './api.js'
 
 // 接收props
 const props = defineProps({
@@ -255,8 +255,18 @@ const updateMenuName = (newName) => {
 // 将btnGroup提供给子组件
 provide('btnGroup', btnGroup.value)
 
-// 组件挂载时获取虚拟机配置
+// 组件挂载时获取虚拟机配置和系统资源信息
 onMounted(async () => {
+  // 获取系统资源信息
+  try {
+    const systemResources = await systemApi.getSystemResources()
+    hostMsg.value.hostCpuCount = systemResources.cpuCores
+    hostMsg.value.hostMemory = systemResources.totalMemory
+    console.log('获取到系统资源信息:', systemResources)
+  } catch (error) {
+    console.error('获取系统资源信息失败:', error)
+  }
+
   if (props.vmName && props.vmName !== 'new') {
     try {
       const response = await vmApi.getVMInfo(props.vmName)

@@ -238,6 +238,17 @@ func DetachUsbDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "USB device detached successfully", "vmName": vmName})
 }
 
+// GetSystemResourceInfoHandler 获取系统资源信息的接口
+func GetSystemResourceInfoHandler(c *gin.Context) {
+	info, err := kvm.GetSystemResourceInfo()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, info)
+}
+
 // RegisterVMOpsRoutes 注册虚拟机操作的路由
 func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 	vmGroup := router.Group("/vm")
@@ -255,4 +266,7 @@ func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 		vmGroup.GET("/attach-usb", AttachUsbDeviceHandler)
 		vmGroup.GET("/detach-usb", DetachUsbDeviceHandler)
 	}
+
+	// 系统资源信息接口
+	router.GET("/system/resources", GetSystemResourceInfoHandler)
 }
