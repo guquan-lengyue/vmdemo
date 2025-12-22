@@ -150,6 +150,42 @@ func parseTextVMList(output string) ([]VMInfo, error) {
 	return vmList, nil
 }
 
+// CheckAndActivateDefaultNetwork 检查并激活默认网络
+func CheckAndActivateDefaultNetwork() error {
+	// 检查网络状态（默认只显示活动网络）
+	status, err := ExecVirshCommand("net-list", "--name")
+	if err != nil {
+		return fmt.Errorf("检查网络状态失败: %v", err)
+	}
+
+	// 检查默认网络是否已经激活
+	if strings.Contains(status, "default") {
+		return nil // 默认网络已激活
+	}
+
+	// 检查默认网络是否存在（包括未激活的）
+	allNetworks, err := ExecVirshCommand("net-list", "--all", "--name")
+	if err != nil {
+		return fmt.Errorf("检查所有网络失败: %v", err)
+	}
+
+	if !strings.Contains(allNetworks, "default") {
+		// 默认网络不存在，使用配置文件定义它
+		_, err = ExecVirshCommand("net-define", "/etc/libvirt/qemu/networks/default.xml")
+		if err != nil {
+			return fmt.Errorf("定义默认网络失败: %v", err)
+		}
+	}
+
+	// 尝试激活默认网络
+	_, err = ExecVirshCommand("net-start", "default")
+	if err != nil {
+		return fmt.Errorf("激活默认网络失败: %v", err)
+	}
+
+	return nil
+}
+
 // StartVM 启动指定的虚拟机
 func StartVM(vmName string) error {
 	_, err := ExecVirshCommand("start", vmName)
@@ -238,6 +274,11 @@ func GetSystemResourceInfo() (*SystemResourceInfo, error) {
 
 // CreateVMFromXML 通过xml创建虚拟机
 func CreateVMFromXML(vmName, xmlConfig string) error {
+	// 创建虚拟机前检查并激活默认网络
+	if err := CheckAndActivateDefaultNetwork(); err != nil {
+		return err
+	}
+
 	// 将xml文本写入到临时文件中,
 	xmlPath := "/tmp/" + vmName + ".xml"
 	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)

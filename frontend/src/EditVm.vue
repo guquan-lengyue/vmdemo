@@ -65,7 +65,7 @@ import { ref,  provide,  onMounted } from 'vue'
 import Overview from './components/Overview.vue'
 import CPU from './components/CPU.vue'
 import Memory from './components/Memery.vue'
-import Disk from './components/Disk.vue'
+import DiskManager from './components/DiskManager.vue'
 import Interface from './components/Interface.vue'
 import Display from './components/Display.vue'
 import Sound from './components/Sound.vue'
@@ -93,7 +93,7 @@ const componentMap = {
   overview: Overview,
   cpu: CPU,
   memory: Memory,
-  disk: Disk,
+  disk: DiskManager,
   interface: Interface,
   display: Display,
   sound: Sound,
