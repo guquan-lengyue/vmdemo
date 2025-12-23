@@ -238,6 +238,44 @@ func DetachUsbDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "USB device detached successfully", "vmName": vmName})
 }
 
+// AttachPCIDeviceHandler 为虚拟机添加PCI设备的接口
+func AttachPCIDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	pciId := c.Query("pciId")
+
+	if vmName == "" || pciId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and PCI ID are required"})
+		return
+	}
+
+	err := kvm.AttachPCIDevice(vmName, pciId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "PCI device attached successfully", "vmName": vmName})
+}
+
+// DetachPCIDeviceHandler 为虚拟机移除PCI设备的接口
+func DetachPCIDeviceHandler(c *gin.Context) {
+	vmName := c.Query("name")
+	pciId := c.Query("pciId")
+
+	if vmName == "" || pciId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "VM name and PCI ID are required"})
+		return
+	}
+
+	err := kvm.DetachPCIDevice(vmName, pciId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "PCI device detached successfully", "vmName": vmName})
+}
+
 // GetSystemResourceInfoHandler 获取系统资源信息的接口
 func GetSystemResourceInfoHandler(c *gin.Context) {
 	info, err := kvm.GetSystemResourceInfo()
@@ -265,6 +303,8 @@ func RegisterVMOpsRoutes(router *gin.RouterGroup) {
 		vmGroup.POST("/update", UpdateVMHandler)
 		vmGroup.GET("/attach-usb", AttachUsbDeviceHandler)
 		vmGroup.GET("/detach-usb", DetachUsbDeviceHandler)
+		vmGroup.GET("/attach-pci", AttachPCIDeviceHandler)
+		vmGroup.GET("/detach-pci", DetachPCIDeviceHandler)
 	}
 
 	// 系统资源信息接口

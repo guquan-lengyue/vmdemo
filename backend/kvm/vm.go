@@ -84,6 +84,17 @@ type Domain struct {
 		Port   string `xml:"port,attr"`
 		Listen string `xml:"listen,attr"`
 	} `xml:"devices>graphics"`
+	Hostdevs []struct {
+		Type   string `xml:"type,attr"`
+		Source struct {
+			Address struct {
+				Domain   string `xml:"domain,attr"`
+				Bus      string `xml:"bus,attr"`
+				Slot     string `xml:"slot,attr"`
+				Function string `xml:"function,attr"`
+			} `xml:"address"`
+		} `xml:"source"`
+	} `xml:"devices>hostdev"`
 }
 
 // extractDisk 解析xml内容 读取xpath=//disk@type='file' 且//disk@device='disk' 下的source/@file属性值
@@ -333,6 +344,16 @@ func DetachUsbDevice(vmName, usbId string) error {
 	return editVmUsb(vmName, usbId, "detach-device")
 }
 
+// AttachPCIDevice 为虚拟机添加PCI设备
+func AttachPCIDevice(vmName, pciID string) error {
+	return editVmPCI(vmName, pciID, "attach-device")
+}
+
+// DetachPCIDevice 为虚拟机移除PCI设备
+func DetachPCIDevice(vmName, pciID string) error {
+	return editVmPCI(vmName, pciID, "detach-device")
+}
+
 func editVmUsb(vmName, usbId, action string) error {
 	xmlPath := fmt.Sprintf("/tmp/%s_%s_usb.xml", vmName, usbId)
 	split := strings.Split(usbId, ":")
@@ -349,6 +370,26 @@ func editVmUsb(vmName, usbId, action string) error {
 	</hostdev>
 	`
 	xml = fmt.Sprintf(xml, vendor, device)
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	defer func() {
+		err := os.Remove(xmlPath)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", xmlPath, err)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand(action, vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func editVmPCI(vmName, pciID, action string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_%s_pci.xml", vmName, pciID)
+	xml := GeneratePCIHostdevXML(pciID)
 	err := os.WriteFile(xmlPath, []byte(xml), 0655)
 	defer func() {
 		err := os.Remove(xmlPath)
