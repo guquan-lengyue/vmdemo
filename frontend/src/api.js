@@ -130,6 +130,14 @@ export const usbApi = {
   listUsbDevices: () => request(`/usb/list`),
 };
 
+// PCI 设备相关 API
+export const pciApi = {
+  // 获取 PCI 设备列表
+  listPciDevices: () => request(`/pci/list`),
+  // 获取 PCI 设备详细信息
+  getPciDeviceDetail: (pciId) => request(`/pci/detail?id=${pciId}`),
+};
+
 // 系统资源相关 API
 export const systemApi = {
   // 获取系统资源信息（CPU核心数和内存大小）
@@ -147,5 +155,6 @@ export default {
   disk: diskApi,
   vnc: vncApi,
   usb: usbApi,
+  pci: pciApi,
   uuid: uuidApi,
 };

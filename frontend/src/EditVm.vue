@@ -71,6 +71,7 @@ import Display from './components/Display.vue'
 import Sound from './components/Sound.vue'
 import Video from './components/Video.vue'
 import USB from './components/USB.vue'
+import PCI from './components/PCI.vue'
 import { xml } from './utils/xml'
 import { vmApi, systemApi } from './api.js'
 
@@ -99,6 +100,7 @@ const componentMap = {
   sound: Sound,
   video: Video,
   usb: USB,
+  pci: PCI,
 }
 
 // 主机信息
@@ -209,6 +211,7 @@ const availableHardwareTypes = [
   { label: '视频', value: 'video' },
   { label: '声音', value: 'sound' },
   { label: 'USB设备', value: 'usb' },
+  { label: 'PCI设备', value: 'pci' },
 ]
 
 // 跟踪当前选中的菜单项索引
@@ -224,6 +227,8 @@ const hardwareCounts = ref({
   display: 1,
   video: 1,
   sound: 1,
+  usb: 1,
+  pci: 1,
 })
 
 // 菜单点击事件处理
@@ -650,9 +655,10 @@ function parseVMXML(xmlString) {
   // 解析USB设备信息
   const hostdevNodes = xmlDoc.querySelectorAll('domain > devices > hostdev')
   const usbDevices = []
+  const pciDevices = []
 
   hostdevNodes.forEach(node => {
-    // 只处理USB设备
+    // 处理USB设备
     if (node.getAttribute('type') === 'usb' && node.getAttribute('mode') === 'subsystem') {
       const vendor = node.querySelector('source > vendor')
       const product = node.querySelector('source > product')
@@ -664,6 +670,20 @@ function parseVMXML(xmlString) {
         // 组合成设备ID格式：vendorId:productId（去掉0x前缀）
         const deviceId = `${vendorId.replace('0x', '')}:${productId.replace('0x', '')}`
         usbDevices.push(deviceId)
+      }
+    } 
+    // 处理PCI设备
+    else if (node.getAttribute('type') === 'pci' && node.getAttribute('mode') === 'subsystem') {
+      const address = node.querySelector('source > address')
+      if (address) {
+        const domain = address.getAttribute('domain') || '0x0000'
+        const bus = address.getAttribute('bus') || '0x00'
+        const slot = address.getAttribute('slot') || '0x00'
+        const functionAttr = address.getAttribute('function') || '0x0'
+
+        // 组合成设备ID格式：domain:bus:slot.function（去掉0x前缀）
+        const deviceId = `${domain.replace('0x', '')}:${bus.replace('0x', '')}:${slot.replace('0x', '')}.${functionAttr.replace('0x', '')}`
+        pciDevices.push(deviceId)
       }
     }
   })
@@ -684,6 +704,24 @@ function parseVMXML(xmlString) {
 
     // 设置USB设备配置
     usbItem.cfg.attachedDevices = usbDevices
+  }
+
+  if (pciDevices.length > 0) {
+    // 查找是否已有PCI配置项
+    let pciItem = btnGroup.value.find(item => item.type === 'pci')
+
+    if (!pciItem) {
+      // 添加新的PCI配置项
+      pciItem = {
+        cfg: {},
+        name: 'PCI设备',
+        type: 'pci'
+      }
+      btnGroup.value.push(pciItem)
+    }
+
+    // 设置PCI设备配置
+    pciItem.cfg.attachedDevices = pciDevices
   }
 }
 </script>

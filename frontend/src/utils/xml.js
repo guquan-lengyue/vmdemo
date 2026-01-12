@@ -179,6 +179,40 @@ function usbXml({ cfg }) {
 }
 
 /**
+ * 生成PCI设备配置的XML
+ * @param {*} cfg
+ * @returns
+ */
+function pciXml({ cfg }) {
+  if (!cfg.attachedDevices || cfg.attachedDevices.length === 0) {
+    return ''
+  }
+
+  // 为每个附加的PCI设备生成XML配置
+  return cfg.attachedDevices.map((deviceId, index) => {
+    // 解析PCI设备ID，格式如：0000:00:02.0
+    const parts = deviceId.split(':')
+    if (parts.length !== 3) {
+      return ''
+    }
+    const domain = parts[0]
+    const bus = parts[1]
+    const slotFunc = parts[2]
+    const [slot, func] = slotFunc.split('.')
+    
+    return `
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x${domain}" bus="0x${bus}" slot="0x${slot}" function="0x${func}"/>
+  </source>
+  <alias name="hostdev${index}"/>
+  <address type="pci" domain="0x0000" bus="0x00" slot="0x${(index + 5).toString(16).padStart(2, '0')}" function="0x0" multifunction="on"/>
+</hostdev>
+`
+  }).join('')
+}
+
+/**
  * 生成CPU配置的XML
  * @param {List<*>} cfg_list
  * @returns
@@ -238,11 +272,15 @@ function xml(cfg_list) {
   const videoXmls = cfg_list
     .filter((i) => i.type === 'video')
     .map(videoXml)
-    .join('\n')
+    .join('')
   const usbXmls = cfg_list
     .filter((i) => i.type === 'usb')
     .map(usbXml)
-    .join('\n')
+    .join('')
+  const pciXmls = cfg_list
+    .filter((i) => i.type === 'pci')
+    .map(pciXml)
+    .join('')
   return `
 <domain type="kvm">
   ${overviewXmls}
@@ -282,6 +320,7 @@ function xml(cfg_list) {
     ${soundXmls}
     ${videoXmls}
     ${usbXmls}
+    ${pciXmls}
     <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
