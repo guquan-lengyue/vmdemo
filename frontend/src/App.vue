@@ -1,430 +1,329 @@
 <template>
-  <div class="vm-cfg-container">
-    <div class="vm-cfg">
-      <div class="menu-header">
-        <button class="install-btn" @click="handleInstall">开始安装</button>
-        <button class="cancel-btn">取消安装</button>
-      </div>
-      <div class="menu-list">
-        <div
-          v-for="(item, index) in btnGroup"
-          :key="index"
-          class="menu-item"
-          @click="handleMenuClick(item, index)"
-        >
-          <span class="menu-icon"></span>
-          <span class="menu-text">{{ item.name }}</span>
-          <!-- 删除按钮，只对用户添加的硬件显示 -->
-          <span
-            v-if="isRemovableHardware(index)"
-            class="delete-btn"
-            @click.stop="deleteHardware(index)"
-          >
-            ×
-          </span>
-        </div>
-        <!-- 添加硬件按钮 -->
-        <div class="add-hardware-btn" @click="showAddHardwareModal = true">
-          <span class="menu-icon">+</span>
-          <span class="menu-text">添加硬件</span>
-        </div>
-      </div>
-    </div>
-    <div class="vm-content">
-      <Component
-        :is="componentMap[selectedMenu] || componentMap['overview']"
-        :hostMsg="hostMsg"
-        :cfg="getCurrentCfg()"
-        @update:cfg="updateComponentCfg"
-        @update:menuName="updateMenuName"
-      />
+  <div class="vm-management">
+    <h1>虚拟机管理</h1>
+
+    <!-- 操作按钮区域 -->
+    <div class="action-buttons">
+      <button @click="showCreateModal = true" class="create-btn">创建虚拟机</button>
     </div>
 
-    <!-- 添加硬件模态框 -->
-    <div v-if="showAddHardwareModal" class="modal-overlay" @click="showAddHardwareModal = false">
-      <div class="modal-content" @click.stop>
-        <h3>选择硬件类型</h3>
-        <div class="hardware-types">
-          <div
-            v-for="type in availableHardwareTypes"
-            :key="type.value"
-            class="hardware-type-item"
-            @click="addHardware(type)"
-          >
-            {{ type.label }}
+    <!-- 虚拟机列表 -->
+    <div class="vm-list">
+      <div v-if="loading" class="loading">加载中...</div>
+      <div v-else-if="vms.length === 0" class="empty-state">暂无虚拟机</div>
+      <div v-else class="vm-cards">
+        <div v-for="vm in vms" :key="vm.name" class="vm-card">
+          <div class="vm-header">
+            <h3>{{ vm.name }}</h3>
+            <span :class="['status-indicator', (vm.state || 'unknown').toLowerCase()]">
+              {{ vm.state || '未知状态' }}
+            </span>
+          </div>
+          <div class="vm-actions">
+            <button @click="handleStart(vm.name)" :disabled="vm.state === 'running'" class="btn start-btn">启动</button>
+            <button @click="handleStop(vm.name)" :disabled="vm.state === 'shut off'" class="btn stop-btn">停止</button>
+            <button @click="handleForceShutdown(vm.name)" :disabled="vm.state !== 'running'" class="btn force-shutdown-btn">强制关机</button>
+            <button @click="handleSuspend(vm.name)" :disabled="vm.state !== 'running'" class="btn suspend-btn">挂起</button>
+            <button @click="handleResume(vm.name)" :disabled="vm.state !== 'paused'" class="btn resume-btn">恢复</button>
+            <button @click="handleEdit(vm.name)" class="btn edit-btn">编辑</button>
+            <button @click="handleDelete(vm.name)" class="btn delete-btn">删除</button>
+            <button @click="handleVncConnect(vm.name)" :disabled="vm.state !== 'running'" class="btn vnc-btn">连接VNC</button>
           </div>
         </div>
+      </div>
+    </div>
+
+
+
+    <!-- 创建虚拟机模态框 -->
+    <div v-if="showCreateModal" class="modal-overlay create-vm-modal" @click="showCreateModal = false">
+      <div class="modal-content" @click.stop>
+        <EditVm :vm-name="'new'" @vm-updated="handleCreateModalUpdated" />
+      </div>
+    </div>
+
+    <!-- 编辑虚拟机模态框 -->
+    <div v-if="showEditModal" class="modal-overlay create-vm-modal" @click="showEditModal = false">
+      <div class="modal-content" @click.stop>
+        <EditVm :vm-name="editingVm" @vm-updated="handleVmUpdated" />
+      </div>
+    </div>
+
+    <!-- VNC连接模态框 -->
+    <div v-if="showVncModal" class="modal-overlay vnc-modal" @click="showVncModal = false">
+      <div class="modal-content vnc-content" @click.stop>
+        <div class="vnc-header">
+          <h3>VNC - {{ connectedVmName }}</h3>
+          <button @click="showVncModal = false" class="close-btn">×</button>
+        </div>
+        <VNC :vm-name="connectedVmName" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, provide } from 'vue'
-import Overview from './components/Overview.vue'
-import CPU from './components/CPU.vue'
-import Memory from './components/Memery.vue'
-import Disk from './components/Disk.vue'
-import Interface from './components/Interface.vue'
-import Display from './components/Display.vue'
-import Sound from './components/Sound.vue'
-import Video from './components/Video.vue'
-import { xml } from './utils/xml'
+import { ref, onMounted } from 'vue'
+import { vmApi } from './api.js'
+import EditVm from './EditVm.vue'
+import VNC from './components/VNC.vue'
 
-const selectedMenu = ref('overview')
+// 数据状态
+const vms = ref([])
+const loading = ref(false)
+const editingVm = ref('')
+const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const showVncModal = ref(false)
+const connectedVmName = ref('')
 
-// 组件映射对象
-const componentMap = {
-  overview: Overview,
-  cpu: CPU,
-  memory: Memory,
-  disk: Disk,
-  interface: Interface,
-  display: Display,
-  sound: Sound,
-  video: Video,
+// 获取虚拟机列表
+const fetchVMs = async () => {
+  loading.value = true
+  try {
+    const data = await vmApi.listVMs()
+    // 后端返回的数据结构是{"vms": [虚拟机列表]}，需要正确提取
+    vms.value = data.vms || []
+  } catch (error) {
+    console.error('获取虚拟机列表失败:', error)
+    vms.value = [] // 出错时确保vms是数组
+  } finally {
+    loading.value = false
+  }
 }
 
-// 主机信息
-const hostMsg = ref({
-  hostCpuCount: 16,
-  hostMemory: 4096,
-  netNames: ['default'], //  虚拟网卡源列表
+// 生命周期钩子 - 页面加载时获取虚拟机列表
+onMounted(() => {
+  fetchVMs()
 })
 
-// 使用ref定义按钮组 - 清空所有组件的默认cfg配置
-const btnGroup = ref([
-  {
-    cfg: {
-      name: 'ubuntu25.10',
-      uuid: 'f0715790-cde5-4faf-8869-d8d72dfaf7d8',
-      osMachine: 'q35',
-      osFirmware: 'bios',
-    },
-    name: '概况',
-    type: 'overview',
-  },
-  {
-    cfg: {
-      cpuCount: 2,
-      cpuMode: 'host-passthrough',
-      isNotManualTopology: false,
-      manualTopology: {
-        sockets: 2,
-        cores: 1,
-        threads: 1,
-      },
-    },
-    name: 'CPU数',
-    type: 'cpu',
-  },
-  {
-    cfg: {
-      memory: 4096,
-      currentMemory: 4096,
-    },
-    name: '内存',
-    type: 'memory',
-  },
-  {
-    cfg: {
-      diskType: 'disk',
-      sourcePath: '/var/lib/libvirt/images/ubuntu25.10-1.qcow2',
-      diskFormat: 'qcow2',
-      targetDev: 'vda',
-      targetBus: 'virtio',
-      isReadOnly: false,
-      bootOrder: 0,
-    },
-    name: 'VirtIO-磁盘',
-    type: 'disk',
-  },
-  {
-    cfg: {
-      networkType: 'network',
-      netName: 'default',
-      bridgeName: '',
-      macAddress: '52:54:00:b5:b3:e7',
-      model: 'virtio',
-    },
-    name: '虚拟网络',
-    type: 'interface',
-  },
-  {
-    cfg: {
-      type: 'vnc',
-      port: '-1',
-      listen: '0.0.0.0',
-      passwd: '',
-      imageCompression: 'off',
-    },
-    name: '显示协议-VNC',
-    type: 'display',
-  },
-  {
-    cfg: {
-      model: 'ac97',
-    },
-    name: '声音',
-    type: 'sound',
-  },
-  {
-    cfg: {
-      model: {
-        type: 'virtio',
-        acceleration: {
-          accel3d: 'yes',
-        },
-      },
-    },
-    name: '视频',
-    type: 'video',
-  },
-])
-
-// 系统默认菜单项的数量
-const defaultMenuCount = 3
-
-// 可添加的硬件类型
-const availableHardwareTypes = [
-  { label: '网络接口', value: 'interface' },
-  { label: '磁盘', value: 'disk' },
-  { label: '显示', value: 'display' },
-  { label: '视频', value: 'video' },
-  { label: '声音', value: 'sound' },
-]
-
-// 跟踪当前选中的菜单项索引
-const currentMenuIndex = ref(-1)
-
-// 模态框显示状态
-const showAddHardwareModal = ref(false)
-
-// 硬件计数，用于生成唯一名称
-const hardwareCounts = ref({
-  interface: 1,
-  disk: 1,
-  display: 1,
-  video: 1,
-  sound: 1,
-})
-
-// 菜单点击事件处理
-const handleMenuClick = (item, index) => {
-  selectedMenu.value = item.type
-  currentMenuIndex.value = index
-}
-
-// 获取当前选中组件的配置
-const getCurrentCfg = () => {
-  if (currentMenuIndex.value === -1) return undefined
-
-  const currentItem = btnGroup.value[currentMenuIndex.value]
-  // 如果cfg为空对象，返回undefined，这样组件会使用自身的默认值
-  return currentItem && Object.keys(currentItem.cfg).length > 0 ? currentItem.cfg : undefined
-}
-
-// 更新组件配置
-const updateComponentCfg = (newCfg) => {
-  if (currentMenuIndex.value !== -1) {
-    btnGroup.value[currentMenuIndex.value].cfg = newCfg
+// 操作处理函数
+const handleStart = async (vmName) => {
+  try {
+    await vmApi.startVM(vmName)
+    await fetchVMs() // 刷新列表
+  } catch (error) {
+    console.error('启动虚拟机失败:', error)
   }
 }
 
-// 更新菜单名称
-const updateMenuName = (newName) => {
-  if (currentMenuIndex.value !== -1) {
-    btnGroup.value[currentMenuIndex.value].name = newName
+const handleStop = async (vmName) => {
+  try {
+    await vmApi.stopVM(vmName)
+    await fetchVMs() // 刷新列表
+  } catch (error) {
+    console.error('停止虚拟机失败:', error)
   }
 }
 
-// 将btnGroup提供给子组件
-provide('btnGroup', btnGroup.value)
-
-function handleInstall() {
-  const xmlStr = xml(btnGroup.value)
-  console.log(xmlStr)
-}
-
-// 添加硬件的方法
-function addHardware(type) {
-  // 增加对应硬件类型的计数
-  hardwareCounts.value[type.value]++
-
-  // 创建新的硬件配置
-  const newHardware = {
-    cfg: {}, // 空配置，让组件使用默认值
-    name: `${getHardwareLabel(type.value)} ${hardwareCounts.value[type.value]}`,
-    type: type.value,
+const handleForceShutdown = async (vmName) => {
+  if (confirm(`确定要强制关闭虚拟机 ${vmName} 吗？此操作可能会导致数据丢失！`)) {
+    try {
+      await vmApi.forceShutdownVM(vmName)
+      await fetchVMs() // 刷新列表
+    } catch (error) {
+      console.error('强制关闭虚拟机失败:', error)
+    }
   }
-
-  // 添加到按钮组
-  btnGroup.value.push(newHardware)
-
-  // 关闭模态框
-  showAddHardwareModal.value = false
-
-  // 选中新添加的硬件
-  const newIndex = btnGroup.value.length - 1
-  handleMenuClick(newHardware, newIndex)
 }
 
-// 获取硬件类型的中文标签
-function getHardwareLabel(type) {
-  const hardwareType = availableHardwareTypes.find((h) => h.value === type)
-  return hardwareType ? hardwareType.label : type
-}
-
-// 判断是否为可删除的硬件（即用户添加的硬件）
-function isRemovableHardware(index) {
-  // 只有通过"添加硬件"功能添加的菜单项才能删除
-  // 默认菜单项（前defaultMenuCount个）不能删除
-  return index >= defaultMenuCount
-}
-
-// 删除硬件的方法
-function deleteHardware(index) {
-  if (!isRemovableHardware(index)) return
-
-  // 如果删除的是当前选中的项，需要重置选中状态
-  if (currentMenuIndex.value === index) {
-    currentMenuIndex.value = -1
-    selectedMenu.value = 'overview'
+const handleSuspend = async (vmName) => {
+  try {
+    await vmApi.suspendVM(vmName)
+    await fetchVMs() // 刷新列表
+  } catch (error) {
+    console.error('挂起虚拟机失败:', error)
   }
+}
 
-  // 调整当前选中项的索引（如果删除的项在当前选中项之前）
-  if (currentMenuIndex.value > index) {
-    currentMenuIndex.value--
+const handleResume = async (vmName) => {
+  try {
+    await vmApi.resumeVM(vmName)
+    await fetchVMs() // 刷新列表
+  } catch (error) {
+    console.error('恢复虚拟机失败:', error)
   }
+}
 
-  // 从按钮组中删除该项
-  btnGroup.value.splice(index, 1)
+const handleDelete = async (vmName) => {
+  if (confirm(`确定要删除虚拟机 ${vmName} 吗？`)) {
+    try {
+      await vmApi.deleteVM(vmName)
+      await fetchVMs() // 刷新列表
+    } catch (error) {
+      console.error('删除虚拟机失败:', error)
+    }
+  }
+}
+
+const handleEdit = (vmName) => {
+  editingVm.value = vmName
+  showEditModal.value = true
+}
+
+const handleVmUpdated = () => {
+  editingVm.value = ''
+  showEditModal.value = false
+  fetchVMs() // 刷新列表
+}
+
+const handleCreateModalUpdated = () => {
+  showCreateModal.value = false
+  fetchVMs() // 刷新列表
+}
+
+const handleVncConnect = (vmName) => {
+  connectedVmName.value = vmName
+  showVncModal.value = true
 }
 </script>
 
 <style scoped>
-.vm-cfg-container {
-  display: flex;
-  height: 100vh;
-  font-family: Arial, sans-serif;
+.vm-management {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.vm-cfg {
-  width: 280px;
-  height: 100vh;
-  border: 1px solid #ccc;
-  display: flex;
-  flex-direction: column;
-  background-color: #2c3e50;
+.action-buttons {
+  margin-bottom: 20px;
 }
 
-.menu-header {
-  background-color: #e74c3c;
-  padding: 10px;
+.create-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.create-btn:hover {
+  background-color: #45a049;
+}
+
+.vm-list {
+  margin-top: 20px;
+}
+
+.loading, .empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.vm-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.vm-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.vm-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.install-btn,
-.cancel-btn {
-  padding: 8px 16px;
+.vm-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.status-indicator {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-indicator.running {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.status-indicator.shutoff {
+  background-color: #f44336;
+  color: white;
+}
+
+.status-indicator.paused {
+  background-color: #ff9800;
+  color: white;
+}
+
+.status-indicator.suspended {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.vm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn {
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-}
-
-.install-btn {
-  background-color: #fff;
-  color: #e74c3c;
-}
-
-.cancel-btn {
-  background-color: transparent;
-  color: #fff;
-  border: 1px solid #fff;
-}
-
-.menu-list {
   flex: 1;
-  overflow-y: auto;
+  min-width: 60px;
 }
 
-.menu-item {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-bottom: 1px solid #34495e;
-  position: relative;
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.menu-item:hover {
-  background-color: #34495e;
-}
-
-.add-hardware-btn {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-bottom: 1px solid #34495e;
-  background-color: #3498db;
+.start-btn {
+  background-color: #4CAF50;
   color: white;
 }
 
-.add-hardware-btn:hover {
-  background-color: #2980b9;
-}
-
-.menu-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 12px;
-  background-color: #7f8c8d;
-  border-radius: 2px;
-  display: inline-block;
-  text-align: center;
-  line-height: 20px;
-  font-size: 16px;
-}
-
-.add-hardware-btn .menu-icon {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-}
-
-.menu-text {
-  font-size: 14px;
+.stop-btn {
+  background-color: #f44336;
   color: white;
-  flex: 1;
 }
 
-/* 删除按钮样式 */
+.force-shutdown-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: 1px solid #b71c1c;
+}
+
+.force-shutdown-btn:hover {
+  background-color: #b71c1c;
+}
+
+.suspend-btn {
+  background-color: #ff9800;
+  color: white;
+}
+
+.resume-btn {
+  background-color: #2196F3;
+  color: white;
+}
+
+.edit-btn {
+  background-color: #9E9E9E;
+  color: white;
+}
+
 .delete-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #e74c3c;
+  background-color: #757575;
   color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  margin-left: 8px;
-  transition: background-color 0.3s;
-}
-
-.delete-btn:hover {
-  background-color: #c0392b;
-}
-
-.vm-content {
-  flex: 1;
-  padding: 20px;
-  background-color: #ecf0f1;
-  overflow-y: auto;
 }
 
 /* 模态框样式 */
@@ -432,8 +331,8 @@ function deleteHardware(index) {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -441,37 +340,95 @@ function deleteHardware(index) {
   z-index: 1000;
 }
 
+/* 基础模态框内容样式 - 会被特定模态框样式覆盖 */
 .modal-content {
   background-color: white;
-  padding: 20px;
+  padding: 30px;
   border-radius: 8px;
-  width: 300px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 500px;
 }
 
-.modal-content h3 {
-  margin-top: 0;
-  color: #2c3e50;
-}
-
-.hardware-types {
+/* 创建虚拟机模态框特定样式 */
+.create-vm-modal .modal-content {
+  width: 65vw;
+  max-width: 65vw;
+  max-height: 80vh;
+  padding: 20px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-.hardware-type-item {
-  color: #333;
-  padding: 12px;
+/* VNC模态框特定样式 */
+.vnc-modal .modal-content {
+  width: 95vw;
+  max-width: 95vw;
+  height: 95vh;
+  max-height: 95vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vnc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
   background-color: #f5f5f5;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-  transition: background-color 0.3s;
+  border-bottom: 1px solid #ddd;
 }
 
-.hardware-type-item:hover {
-  background-color: #3498db;
+.vnc-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.vnc-btn {
+  background-color: #2196F3;
   color: white;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.cancel-btn {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
 }
 </style>

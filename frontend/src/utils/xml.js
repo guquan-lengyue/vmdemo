@@ -22,14 +22,20 @@ function cpuXml({ cfg }) {
  * @returns
  */
 function diskXml({ cfg }) {
-  const readonlyTag = cfg.isReadOnly && cfg.diskType === 'cdrom' ? '<readonly/>' : ''
+  // 只对CDROM类型添加只读标签
+  const readonlyTag = cfg.diskType === 'cdrom' ? '<readonly/>' : ''
+  // 只对CDROM类型添加可弹出标签
+  const removableTag = cfg.diskType === 'cdrom' ? '<removable/>' : ''
+  // 只有当bootOrder大于0时才添加启动顺序
+  const bootOrderTag = cfg.bootOrder !== undefined && cfg.bootOrder > 0 ? `<boot order="${cfg.bootOrder}"/>` : ''
   return `
 <disk type="file" device="${cfg.diskType}">
-  <driver name="qemu" type="${cfg.diskFormat}" discard="unmap"/>
+  <driver name="qemu" type="${cfg.diskFormat}"${cfg.diskType !== 'cdrom' ? ' discard="unmap"' : ''}/>
   <source file="${cfg.sourcePath}"/>
   <target dev="${cfg.targetDev}" bus="${cfg.targetBus}"/>
   ${readonlyTag}
-  <boot order="${cfg.bootOrder || 0 + 1}"/>
+  ${removableTag}
+  ${bootOrderTag}
 </disk>
 `
 }
@@ -57,12 +63,14 @@ function interfaceXml({ cfg }) {
   if (cfg.model === 'default') {
     model = `<model type="${cfg.model}"/>`
   }
+  // 只有当bootOrder大于0时才添加启动顺序
+  const bootOrderTag = cfg.bootOrder !== undefined && cfg.bootOrder > 0 ? `<boot order="${cfg.bootOrder}"/>` : ''
   return `
 <interface type="${cfg.networkType}">
   <source network="${cfg.networkType === 'bridge' ? cfg.bridgeName : cfg.netName}"/>
   <mac address="${cfg.macAddress}"/>
   ${model}
-  <boot order="${cfg.bootOrder || 0 + 1}"/>
+  ${bootOrderTag}
 </interface>
 `
 }
@@ -73,9 +81,14 @@ function interfaceXml({ cfg }) {
  * @returns
  */
 function memoryXml({ cfg }) {
+  // 确保内存值存在且为正数
+  const memory = cfg.memory && cfg.memory > 0 ? cfg.memory : 2048
+  const currentMemory = cfg.currentMemory && cfg.currentMemory > 0 ? cfg.currentMemory : 2048
+
+  // XML中的内存值通常是以KB为单位的，而前端的内存配置是以MB为单位的，所以需要进行单位转换
   return `
-  <memory>${cfg.memory}</memory>
-  <currentMemory>${cfg.currentMemory}</currentMemory>
+  <memory unit="MiB">${memory}</memory>
+  <currentMemory unit="MiB">${currentMemory}</currentMemory>
 `
 }
 
@@ -86,8 +99,8 @@ function memoryXml({ cfg }) {
  */
 function overviewXml({ cfg }) {
   let osFirmwareTag = ''
-  if (cfg.osFirmware === 'efi') {
-    osFirmwareTag = `firmware="${cfg.osFirmware}"`
+  if (cfg.osFirmware === 'uefi') {
+    osFirmwareTag = `firmware="efi"`
   }
   return `
 <name>${cfg.name}</name>
@@ -142,11 +155,66 @@ function videoXml({ cfg }) {
 }
 
 /**
+ * 生成USB设备配置的XML
+ * @param {*} cfg
+ * @returns
+ */
+function usbXml({ cfg }) {
+  if (!cfg.attachedDevices || cfg.attachedDevices.length === 0) {
+    return ''
+  }
+
+  // 为每个附加的USB设备生成XML配置
+  return cfg.attachedDevices.map(deviceId => {
+    const [vendorId, productId] = deviceId.split(':')
+    return `
+<hostdev mode="subsystem" type="usb" managed="yes">
+  <source>
+    <vendor id="0x${vendorId}"/>
+    <product id="0x${productId}"/>
+  </source>
+</hostdev>
+`
+  }).join('')
+}
+
+/**
  * 生成CPU配置的XML
  * @param {List<*>} cfg_list
  * @returns
  */
 function xml(cfg_list) {
+  // 跟踪已使用的启动顺序
+  const usedBootOrders = new Set()
+
+  // 处理磁盘XML，确保启动顺序唯一
+  const diskXmls = cfg_list
+    .filter((i) => i.type === 'disk')
+    .map(item => {
+      if (item.cfg.bootOrder > 0 && usedBootOrders.has(item.cfg.bootOrder)) {
+        // 如果启动顺序已被使用，将其设置为0（不添加启动顺序标签）
+        item.cfg.bootOrder = 0
+      } else if (item.cfg.bootOrder > 0) {
+        usedBootOrders.add(item.cfg.bootOrder)
+      }
+      return diskXml(item)
+    })
+    .join('\n')
+
+  // 处理网络接口XML，确保启动顺序唯一
+  const interfaceXmls = cfg_list
+    .filter((i) => i.type === 'interface')
+    .map(item => {
+      if (item.cfg.bootOrder > 0 && usedBootOrders.has(item.cfg.bootOrder)) {
+        // 如果启动顺序已被使用，将其设置为0（不添加启动顺序标签）
+        item.cfg.bootOrder = 0
+      } else if (item.cfg.bootOrder > 0) {
+        usedBootOrders.add(item.cfg.bootOrder)
+      }
+      return interfaceXml(item)
+    })
+    .join('\n')
+
   const overviewXmls = cfg_list
     .filter((i) => i.type === 'overview')
     .map(overviewXml)
@@ -159,14 +227,6 @@ function xml(cfg_list) {
     .filter((i) => i.type === 'memory')
     .map(memoryXml)
     .join('\n')
-  const diskXmls = cfg_list
-    .filter((i) => i.type === 'disk')
-    .map(diskXml)
-    .join('\n')
-  const interfaceXmls = cfg_list
-    .filter((i) => i.type === 'interface')
-    .map(interfaceXml)
-    .join('\n')
   const displayXmls = cfg_list
     .filter((i) => i.type === 'display')
     .map(displayXml)
@@ -178,6 +238,10 @@ function xml(cfg_list) {
   const videoXmls = cfg_list
     .filter((i) => i.type === 'video')
     .map(videoXml)
+    .join('\n')
+  const usbXmls = cfg_list
+    .filter((i) => i.type === 'usb')
+    .map(usbXml)
     .join('\n')
   return `
 <domain type="kvm">
@@ -217,6 +281,7 @@ function xml(cfg_list) {
     ${displayXmls}
     ${soundXmls}
     ${videoXmls}
+    ${usbXmls}
     <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>

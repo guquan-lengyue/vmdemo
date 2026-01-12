@@ -84,6 +84,17 @@ type Domain struct {
 		Port   string `xml:"port,attr"`
 		Listen string `xml:"listen,attr"`
 	} `xml:"devices>graphics"`
+	Hostdevs []struct {
+		Type   string `xml:"type,attr"`
+		Source struct {
+			Address struct {
+				Domain   string `xml:"domain,attr"`
+				Bus      string `xml:"bus,attr"`
+				Slot     string `xml:"slot,attr"`
+				Function string `xml:"function,attr"`
+			} `xml:"address"`
+		} `xml:"source"`
+	} `xml:"devices>hostdev"`
 }
 
 // extractDisk 解析xml内容 读取xpath=//disk@type='file' 且//disk@device='disk' 下的source/@file属性值
@@ -150,6 +161,42 @@ func parseTextVMList(output string) ([]VMInfo, error) {
 	return vmList, nil
 }
 
+// CheckAndActivateDefaultNetwork 检查并激活默认网络
+func CheckAndActivateDefaultNetwork() error {
+	// 检查网络状态（默认只显示活动网络）
+	status, err := ExecVirshCommand("net-list", "--name")
+	if err != nil {
+		return fmt.Errorf("检查网络状态失败: %v", err)
+	}
+
+	// 检查默认网络是否已经激活
+	if strings.Contains(status, "default") {
+		return nil // 默认网络已激活
+	}
+
+	// 检查默认网络是否存在（包括未激活的）
+	allNetworks, err := ExecVirshCommand("net-list", "--all", "--name")
+	if err != nil {
+		return fmt.Errorf("检查所有网络失败: %v", err)
+	}
+
+	if !strings.Contains(allNetworks, "default") {
+		// 默认网络不存在，使用配置文件定义它
+		_, err = ExecVirshCommand("net-define", "/etc/libvirt/qemu/networks/default.xml")
+		if err != nil {
+			return fmt.Errorf("定义默认网络失败: %v", err)
+		}
+	}
+
+	// 尝试激活默认网络
+	_, err = ExecVirshCommand("net-start", "default")
+	if err != nil {
+		return fmt.Errorf("激活默认网络失败: %v", err)
+	}
+
+	return nil
+}
+
 // StartVM 启动指定的虚拟机
 func StartVM(vmName string) error {
 	_, err := ExecVirshCommand("start", vmName)
@@ -188,12 +235,61 @@ func ForceShutdownVM(vmName string) error {
 
 // DeleteVM 删除指定的虚拟机
 func DeleteVM(vmName string) error {
-	_, err := ExecVirshCommand("undefine", vmName, "--nvram", "--remove-all-storage")
+	_, err := ExecVirshCommand("undefine", vmName, "--nvram")
 	return err
+}
+
+// SystemResourceInfo 表示系统资源信息
+type SystemResourceInfo struct {
+	CPUCores    int   `json:"cpuCores"`
+	TotalMemory int64 `json:"totalMemory"` // MB
+}
+
+// GetSystemResourceInfo 获取系统CPU核心数量和内存大小信息
+func GetSystemResourceInfo() (*SystemResourceInfo, error) {
+	// 获取CPU核心数量
+	cpuOutput, err := exec.Command("lscpu", "--parse=CPU").Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取CPU信息失败: %v", err)
+	}
+
+	cpuLines := strings.Split(string(cpuOutput), "\n")
+	cpuCores := 0
+	for _, line := range cpuLines {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			cpuCores++
+		}
+	}
+
+	// 获取内存大小
+	memOutput, err := exec.Command("free", "-m").Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取内存信息失败: %v", err)
+	}
+
+	memLines := strings.Split(string(memOutput), "\n")
+	var totalMemory int64
+	if len(memLines) >= 2 {
+		memParts := strings.Fields(memLines[1])
+		if len(memParts) >= 2 {
+			fmt.Sscanf(memParts[1], "%d", &totalMemory)
+		}
+	}
+
+	return &SystemResourceInfo{
+		CPUCores:    cpuCores,
+		TotalMemory: totalMemory,
+	}, nil
 }
 
 // CreateVMFromXML 通过xml创建虚拟机
 func CreateVMFromXML(vmName, xmlConfig string) error {
+	// 创建虚拟机前检查并激活默认网络
+	if err := CheckAndActivateDefaultNetwork(); err != nil {
+		return err
+	}
+
 	// 将xml文本写入到临时文件中,
 	xmlPath := "/tmp/" + vmName + ".xml"
 	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)
@@ -218,6 +314,23 @@ func CreateVMFromXML(vmName, xmlConfig string) error {
 	return err
 }
 
+// UpdateVMFromXML 通过xml更新虚拟机配置
+func UpdateVMFromXML(vmName, xmlConfig string) error {
+	// 将xml文本写入到临时文件中
+	xmlPath := "/tmp/" + vmName + "_update.xml"
+	err := os.WriteFile(xmlPath, []byte(xmlConfig), 0655)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", name, err)
+		}
+	}(xmlPath) // 更新完成后删除临时文件
+
+	// 使用virsh define命令更新虚拟机配置
+	_, err = ExecVirshCommand("define", "--file", xmlPath)
+	return err
+}
+
 // AttachUsbDevice 为虚拟机添加usb设备
 func AttachUsbDevice(vmName, usbId string) error {
 	return editVmUsb(vmName, usbId, "attach-device")
@@ -229,6 +342,16 @@ func AttachUsbDevice(vmName, usbId string) error {
 // usbId usb设备id如:0930:6545
 func DetachUsbDevice(vmName, usbId string) error {
 	return editVmUsb(vmName, usbId, "detach-device")
+}
+
+// AttachPCIDevice 为虚拟机添加PCI设备
+func AttachPCIDevice(vmName, pciID string) error {
+	return editVmPCI(vmName, pciID, "attach-device")
+}
+
+// DetachPCIDevice 为虚拟机移除PCI设备
+func DetachPCIDevice(vmName, pciID string) error {
+	return editVmPCI(vmName, pciID, "detach-device")
 }
 
 func editVmUsb(vmName, usbId, action string) error {
@@ -247,6 +370,26 @@ func editVmUsb(vmName, usbId, action string) error {
 	</hostdev>
 	`
 	xml = fmt.Sprintf(xml, vendor, device)
+	err := os.WriteFile(xmlPath, []byte(xml), 0655)
+	defer func() {
+		err := os.Remove(xmlPath)
+		if err != nil {
+			log.Printf("Failed to remove temp file %s: %v", xmlPath, err)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	_, err = ExecVirshCommand(action, vmName, xmlPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func editVmPCI(vmName, pciID, action string) error {
+	xmlPath := fmt.Sprintf("/tmp/%s_%s_pci.xml", vmName, pciID)
+	xml := GeneratePCIHostdevXML(pciID)
 	err := os.WriteFile(xmlPath, []byte(xml), 0655)
 	defer func() {
 		err := os.Remove(xmlPath)
